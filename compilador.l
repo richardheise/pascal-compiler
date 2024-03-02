@@ -317,6 +317,27 @@ and {
     return IGUAL;
 }
 
+not { 
+    simbolo = simb_not;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME("not  ");
+    return NOT;
+}
+
+array { 
+    simbolo = simb_array;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME("array  ");
+    return ARRAY;
+}
+
+of { 
+    simbolo = simb_of;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME("of  ");
+    return OF;
+}
+
 {ident} { 
     simbolo = simb_identificador;
     strncpy (token, yytext, TAM_TOKEN);
