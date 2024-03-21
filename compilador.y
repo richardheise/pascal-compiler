@@ -9,14 +9,27 @@
 #include <stdlib.h>
 #include <string.h>
 #include "compilador.h"
+#include "tabela_simbolos.h"
 
-int num_vars;
+int num_vars = 0;
+int num_vars_tipo = 0;
+int deslocamento = 0;
+
+char aux[16];
+
+tabela_simbolos_t tabela;
 
 %}
 
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
 %token VIRGULA PONTO_E_VIRGULA DOIS_PONTOS PONTO
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
+%token LABEL PROCEDURE FUNCTION OF
+%token TRUE FALSE IF THEN ELSE WHILE DO GOTO
+%token READ WRITE OR AND NOT
+%token SOMA SUBTRACAO DIVISAO MULTIPLICACAO
+%token MENOR MAIOR IGUAL MENORI MAIORI
+%token INTEGER BOOLEAN ARRAY NUM
 
 %%
 
@@ -27,6 +40,7 @@ programa    :{
              ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
              bloco PONTO {
              geraCodigo (NULL, "PARA");
+             imprime(tabela);
              }
 ;
 
@@ -56,17 +70,38 @@ declara_vars: declara_vars declara_var
 declara_var : { }
               lista_id_var DOIS_PONTOS
               tipo
-              { /* AMEM */
+              {
+               char comando[100];
+               sprintf(comando, "AMEM %d", num_vars_tipo);
+               geraCodigo (NULL, comando);
+               num_vars_tipo = 0;
               }
               PONTO_E_VIRGULA
 ;
 
-tipo        : IDENT
+tipo        : IDENT 
+               {
+                  if (strcmp(token, "integer") == 0)
+                     atualizaTipoVar (&tabela, INT, num_vars_tipo);
+                  else if (strcmp(token, "boolean") == 0)
+                     atualizaTipoVar (&tabela, BOOL, num_vars_tipo);
+                  else
+                     imprimeErro ("Tipo de variavel não aceito");
+               }
 ;
 
 lista_id_var: lista_id_var VIRGULA IDENT
-              { /* insere �ltima vars na tabela de s�mbolos */ }
-            | IDENT { /* insere vars na tabela de s�mbolos */}
+              { /* insere �ltima vars na tabela de s�mbolos */ 
+                  insereVarTabela (&tabela, token, 0, deslocamento);
+                  deslocamento++;
+                  num_vars_tipo++;
+              }
+            | IDENT 
+               { /* insere vars na tabela de s�mbolos */
+                  insereVarTabela (&tabela, token, 0, deslocamento);
+                  deslocamento++;
+                  num_vars_tipo++;
+               }
 ;
 
 lista_idents: lista_idents VIRGULA IDENT
@@ -75,13 +110,32 @@ lista_idents: lista_idents VIRGULA IDENT
 
 
 comando_composto: T_BEGIN comandos T_END
-
-comandos:
 ;
 
+comandos: comandos comando_sem_rotulo |
+          comando_sem_rotulo
+;
+
+comando_sem_rotulo: atribuicao
+;
+
+atribuicao: IDENT {strncpy(aux, token, 16);} ATRIBUICAO expressao
+;
+
+expressao: NUM
+            {
+               char comando[100];
+               sprintf(comando, "CRCT %s", token);
+               geraCodigo (NULL, comando);
+               
+               simbolo_t var = busca (tabela, aux);
+               sprintf(comando, "ARMZ %d,%d", var.var.nivel, var.var.deslocamento);
+               geraCodigo (NULL, comando);
+            }
+            PONTO_E_VIRGULA
+;
 
 %%
-
 int main (int argc, char** argv) {
    FILE* fp;
    extern FILE* yyin;
@@ -101,6 +155,7 @@ int main (int argc, char** argv) {
 /* -------------------------------------------------------------------
  *  Inicia a Tabela de S�mbolos
  * ------------------------------------------------------------------- */
+   inicializa_tabela(&tabela);
 
    yyin=fp;
    yyparse();

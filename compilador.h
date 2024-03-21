@@ -13,6 +13,7 @@
 
 #define TAM_TOKEN 16
 
+
 typedef enum simbolos {
   simb_program, simb_var, simb_begin, simb_end, simb_ponto, 
   simb_virgula, simb_ponto_e_virgula, simb_dois_pontos,
@@ -44,3 +45,4 @@ extern int nl;
 void geraCodigo (char*, char*);
 int yylex();
 void yyerror(const char *s);
+int imprimeErro ( char* erro );

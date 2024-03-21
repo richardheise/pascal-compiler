@@ -142,20 +142,6 @@ function {
     return FUNCTION;
 }
 
-integer { 
-    simbolo = simb_integer;
-    strncpy (token, yytext, TAM_TOKEN);
-    IMPRIME("integer  ");
-    return INTEGER;
-}
-
-boolean { 
-    simbolo = simb_boolean;
-    strncpy (token, yytext, TAM_TOKEN);
-    IMPRIME("boolean  ");
-    return BOOLEAN;
-}
-
 true { 
     simbolo = simb_true;
     strncpy (token, yytext, TAM_TOKEN);
@@ -167,7 +153,7 @@ false {
     simbolo = simb_false;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME("false  ");
-    return false;
+    return FALSE;
 }
 
 if { 
@@ -233,13 +219,6 @@ write {
     return SOMA;
 }
 
- \+ { 
-    simbolo = simb_soma;
-    strncpy (token, yytext, TAM_TOKEN);
-    IMPRIME("soma  ");
-    return SOMA;
-}
-
 \- { 
     simbolo = simb_subtracao;
     strncpy (token, yytext, TAM_TOKEN);
@@ -259,13 +238,6 @@ div {
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME("multiplicacao  ");
     return MULTIPLICACAO;
-}
-
-\+ { 
-    simbolo = simb_soma;
-    strncpy (token, yytext, TAM_TOKEN);
-    IMPRIME("soma  ");
-    return SOMA;
 }
 
 or { 

@@ -40,13 +40,32 @@ simbolo_t busca (tabela_simbolos_t ts, char* nome) {
 void imprime (tabela_simbolos_t ts) {
     for (int i = 0; i <= ts.topo; i++) {
         switch (ts.itens[i].tipo) {
-            case VARIAVEL: printf ("%s %s\n", ts.itens[i].var.nome, "VARIAVEL");break;
-            case PARAMETRO_FORMAL: printf ("%s %s\n", ts.itens[i].param.nome, "PARAMETRO_FORMAL");break;
-            case PROCEDIMENTO: printf ("%s %s\n", ts.itens[i].proc.nome, "PROCEDIMENTO");break;
-            case FUNCAO: printf ("%s %s\n", ts.itens[i].func.nome, "FUNCAO");break;
-            case ROTULO: printf ("%s %s\n", ts.itens[i].rot.nome, "ROTULO");break;
+            case VARIAVEL: printf ("%s VARIAVEL Tipo:%d Nivel:%d Deslocamento:%d\n", ts.itens[i].var.nome, ts.itens[i].var.tipo, ts.itens[i].var.nivel, ts.itens[i].var.deslocamento);break;
+            case PARAMETRO_FORMAL: printf ("%s PARAMETRO_FORMAL\n", ts.itens[i].param.nome);break;
+            case PROCEDIMENTO: printf ("%s PROCEDIMENTO\n", ts.itens[i].proc.nome);break;
+            case FUNCAO: printf ("%s FUNCAO\n", ts.itens[i].func.nome);break;
+            case ROTULO: printf ("%s ROTULO\n", ts.itens[i].rot.nome);break;
         }
     }
 
     return;
+}
+
+void insereVarTabela (tabela_simbolos_t *ts, char* token, int nivel, int deslocamento) {
+    variavel_t v;
+    simbolo_t s;
+
+    strncpy(v.nome, token, 16);
+    v.nivel = nivel;
+    v.deslocamento = deslocamento;
+    s.tipo = VARIAVEL;
+    s.var = v;
+    insere (ts, s);
+}
+
+void atualizaTipoVar (tabela_simbolos_t *ts, int tipo, int quant) {
+    for (int i = ts->topo; quant > 0; i--) {
+        ts->itens[i].var.tipo = tipo;
+        quant--;
+    }
 }
