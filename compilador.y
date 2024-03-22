@@ -10,14 +10,16 @@
 #include <string.h>
 #include "compilador.h"
 #include "tabela_simbolos.h"
+#include "pilha.h"
 
-int num_vars = 0;
+
+int num_vars_comando = 0;
 int num_vars_tipo = 0;
 int deslocamento = 0;
 
-char aux[16];
-
 tabela_simbolos_t tabela;
+pilha_t pilha;
+
 
 %}
 
@@ -95,12 +97,14 @@ lista_id_var: lista_id_var VIRGULA IDENT
                   insereVarTabela (&tabela, token, 0, deslocamento);
                   deslocamento++;
                   num_vars_tipo++;
+                  num_vars_comando++;
               }
             | IDENT 
                { /* insere vars na tabela de s�mbolos */
                   insereVarTabela (&tabela, token, 0, deslocamento);
                   deslocamento++;
                   num_vars_tipo++;
+                  num_vars_comando++;
                }
 ;
 
@@ -109,7 +113,13 @@ lista_idents: lista_idents VIRGULA IDENT
 ;
 
 
-comando_composto: T_BEGIN comandos T_END
+comando_composto: T_BEGIN comandos T_END 
+                     {
+                        char comando[100];
+                        sprintf(comando, "DMEM %d", num_vars_comando);
+                        geraCodigo (NULL, comando);
+                        num_vars_comando = 0;
+                     }
 ;
 
 comandos: comandos comando_sem_rotulo |
@@ -119,7 +129,11 @@ comandos: comandos comando_sem_rotulo |
 comando_sem_rotulo: atribuicao
 ;
 
-atribuicao: IDENT {strncpy(aux, token, 16);} ATRIBUICAO expressao
+atribuicao: IDENT 
+               {
+                  empilha (token, &pilha);
+               } 
+            ATRIBUICAO expressao
 ;
 
 expressao: NUM
@@ -128,6 +142,8 @@ expressao: NUM
                sprintf(comando, "CRCT %s", token);
                geraCodigo (NULL, comando);
                
+               char* aux = desempilha (&pilha);
+               printf ("AQUI %s\n", aux);
                simbolo_t var = busca (tabela, aux);
                sprintf(comando, "ARMZ %d,%d", var.var.nivel, var.var.deslocamento);
                geraCodigo (NULL, comando);
@@ -156,6 +172,7 @@ int main (int argc, char** argv) {
  *  Inicia a Tabela de S�mbolos
  * ------------------------------------------------------------------- */
    inicializa_tabela(&tabela);
+   inicializa_pilha(&pilha);
 
    yyin=fp;
    yyparse();

@@ -1,4 +1,4 @@
-#define MAX 10000
+#define MAX_TABELA 10000
 #define TAM_TOKEN 16
 
 enum tipo_variavel { INT, BOOL };
@@ -58,7 +58,7 @@ typedef struct {
 
 typedef struct {
    int topo;
-   simbolo_t itens[MAX];
+   simbolo_t itens[MAX_TABELA];
 } tabela_simbolos_t;
 
 

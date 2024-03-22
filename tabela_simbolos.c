@@ -8,7 +8,7 @@ void inicializa_tabela (tabela_simbolos_t *ts) {
 }
 
 void insere (tabela_simbolos_t *ts, simbolo_t s) {
-    if ((ts->topo + 1) == MAX)
+    if ((ts->topo + 1) == MAX_TABELA)
         return;
 
     ts->topo = ts->topo + 1;
@@ -27,8 +27,11 @@ void retira (tabela_simbolos_t *ts, int n) {
 }
 
 simbolo_t busca (tabela_simbolos_t ts, char* nome) {
+    char aux[TAM_TOKEN];
+    strncpy(aux, nome, TAM_TOKEN);
+    
     for (int i = ts.topo; i >= 0; i--) {
-        if (strcmp(nome, ts.itens[i].var.nome) == 0)
+        if (strcmp(aux, ts.itens[i].var.nome) == 0)
             return ts.itens[i];
     }
 
@@ -55,7 +58,7 @@ void insereVarTabela (tabela_simbolos_t *ts, char* token, int nivel, int desloca
     variavel_t v;
     simbolo_t s;
 
-    strncpy(v.nome, token, 16);
+    strncpy(v.nome, token, TAM_TOKEN);
     v.nivel = nivel;
     v.deslocamento = deslocamento;
     s.tipo = VARIAVEL;
