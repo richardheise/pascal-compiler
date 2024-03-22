@@ -1,0 +1,6 @@
+compilador
+compilador.o
+compilador.output
+compilador.tab.c
+compilador.tab.h
+lex.yy.c
