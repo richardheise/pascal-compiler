@@ -88,7 +88,7 @@ tipo        : IDENT
                   else if (strcmp(token, "boolean") == 0)
                      atualizaTipoVar (&tabela, BOOL, num_vars_tipo);
                   else
-                     imprimeErro ("Tipo de variavel não aceito");
+                     imprimeErro ("Tipo de variavel não aceito.");
                }
 ;
 
@@ -143,8 +143,12 @@ expressao: NUM
                geraCodigo (NULL, comando);
                
                char* aux = desempilha (&pilha);
-               printf ("AQUI %s\n", aux);
                simbolo_t var = busca (tabela, aux);
+
+               if (var.var.tipo != INT)
+                  imprimeErro ("Atribuição inválida.");
+                  
+
                sprintf(comando, "ARMZ %d,%d", var.var.nivel, var.var.deslocamento);
                geraCodigo (NULL, comando);
             }
