@@ -222,22 +222,22 @@ write {
 \- { 
     simbolo = simb_subtracao;
     strncpy (token, yytext, TAM_TOKEN);
-    IMPRIME("subtraca  ");
-    return SUBTRACAO;
+    IMPRIME("subtracao  ");
+    return SUBT;
 }
 
 div { 
     simbolo = simb_divisao;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME("divisao  ");
-    return DIVISAO;
+    return DIVI;
 }
 
 \* { 
     simbolo = simb_multiplicacao;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME("multiplicacao  ");
-    return MULTIPLICACAO;
+    return MULT;
 }
 
 or { 
@@ -308,6 +308,13 @@ of {
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME("of  ");
     return OF;
+}
+
+\<> {
+    simbolo = simb_dif;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME("diferente  ");
+    return DIFERENTE;
 }
 
 {ident} { 

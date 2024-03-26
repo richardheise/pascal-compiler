@@ -21,7 +21,6 @@ typedef struct {
 
 typedef struct {
    char nome[TAM_TOKEN];
-   int linha;
 } rotulo_t;
 
 typedef struct {

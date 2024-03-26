@@ -29,9 +29,9 @@ pilha_t pilha;
 %token LABEL PROCEDURE FUNCTION OF
 %token TRUE FALSE IF THEN ELSE WHILE DO GOTO
 %token READ WRITE OR AND NOT
-%token SOMA SUBTRACAO DIVISAO MULTIPLICACAO
+%token SOMA SUBT MULT DIVI
 %token MENOR MAIOR IGUAL MENORI MAIORI
-%token INTEGER BOOLEAN ARRAY NUM
+%token INTEGER BOOLEAN ARRAY NUM DIFERENTE
 
 %%
 
@@ -129,30 +129,61 @@ comandos: comandos comando_sem_rotulo |
 comando_sem_rotulo: atribuicao
 ;
 
-atribuicao: IDENT 
+atribuicao: IDENT
                {
                   empilha (token, &pilha);
                } 
-            ATRIBUICAO expressao
+            ATRIBUICAO expressao 
+               {
+                  char comando[100];
+                  char *destino = desempilha (&pilha);
+
+                  simbolo_t var = busca (tabela, destino);
+
+                  if (var.var.tipo != INT)
+                     imprimeErro ("Atribuição inválida.");
+                     
+                  sprintf(comando, "ARMZ %d,%d", var.var.nivel, var.var.deslocamento);
+                  geraCodigo (NULL, comando);
+               }
+            PONTO_E_VIRGULA
 ;
 
-expressao: NUM
-            {
-               char comando[100];
-               sprintf(comando, "CRCT %s", token);
-               geraCodigo (NULL, comando);
-               
-               char* aux = desempilha (&pilha);
-               simbolo_t var = busca (tabela, aux);
+expressao: expressao operacao_boleana expressao_simples |
+           expressao_simples
 
-               if (var.var.tipo != INT)
-                  imprimeErro ("Atribuição inválida.");
-                  
+operacao_boleana: IGUAL | DIFERENTE | MENOR | MAIOR | MENORI | MAIORI
+;
 
-               sprintf(comando, "ARMZ %d,%d", var.var.nivel, var.var.deslocamento);
-               geraCodigo (NULL, comando);
-            }
-            PONTO_E_VIRGULA
+expressao_simples: expressao_simples operacao_inteira fator
+                     {
+                        char *op = desempilha (&pilha);
+                        geraCodigo (NULL, op);
+                     }
+                   |
+                   fator 
+;
+
+operacao_inteira: SOMA {empilha ("SOMA", &pilha);} |
+                  SUBT {empilha ("SUBT", &pilha);} |
+                  DIVI {empilha ("DIVI", &pilha);} |
+                  MULT {empilha ("MULT", &pilha);}
+;
+
+fator: NUM
+         {
+            char comando[100];
+            sprintf(comando, "CRCT %s", token);
+            geraCodigo (NULL, comando);
+         }
+      | IDENT
+         {
+            char comando[100];
+            simbolo_t var = busca (tabela, token);
+
+            sprintf(comando, "CRVL %d,%d", var.var.nivel, var.var.deslocamento);
+            geraCodigo (NULL, comando);
+         }
 ;
 
 %%
