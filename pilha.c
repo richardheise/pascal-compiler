@@ -39,3 +39,8 @@ char* desempilha (pilha_t *p) {
 int tamanho_pilha(pilha_t p) {
     return p.topo + 1;
 }
+
+void imprime_pilha (pilha_t *p) {
+    for (int i = 0; i <= p->topo; i++)
+        printf ("%s\n", p->itens[i]);
+}

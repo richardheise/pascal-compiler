@@ -8,18 +8,18 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include "compilador.h"
 #include "tabela_simbolos.h"
-#include "pilha.h"
 
 
-int num_vars_comando = 0;
 int num_vars_tipo = 0;
 int deslocamento = 0;
+int nivel_lexico = 0;
+int num_rotulos = 0;
 
 tabela_simbolos_t tabela;
-pilha_t pilha;
-
+pilha_t pilha_tipos;
+pilha_t pilha_simbolos;
+pilha_t rotulos;
 
 %}
 
@@ -31,28 +31,32 @@ pilha_t pilha;
 %token READ WRITE OR AND NOT
 %token SOMA SUBT MULT DIVI
 %token MENOR MAIOR IGUAL MENORI MAIORI
-%token INTEGER BOOLEAN ARRAY NUM DIFERENTE
+%token INTEGER BOOLEAN ARRAY NUM DIFERENTE ASPAS ASPASDUPLAS
 
 %%
 
-programa    :{
-             geraCodigo (NULL, "INPP");
-             }
+programa :
+            {geraCodigo (NULL, "INPP"); }
              PROGRAM IDENT
              ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
-             bloco PONTO {
-             geraCodigo (NULL, "PARA");
-             imprime(tabela);
-             }
+             bloco PONTO 
+               {
+                  geraCodigo (NULL, "PARA");
+                  imprime(tabela);
+               }
 ;
 
-bloco       :
-              parte_declara_vars
-              {
-              }
+bloco :
+         parte_declara_vars
+         {
+            char comando[100];
+            int num_vars = quantVariaveis (tabela, nivel_lexico);
+            sprintf(comando, "AMEM %d", num_vars);
+            geraCodigo (NULL, comando);
+         }
 
-              comando_composto
-              ;
+         comando_composto
+;
 
 
 
@@ -61,7 +65,7 @@ parte_declara_vars:  var
 ;
 
 
-var         : { } VAR declara_vars
+var         : VAR declara_vars
             |
 ;
 
@@ -69,15 +73,9 @@ declara_vars: declara_vars declara_var
             | declara_var
 ;
 
-declara_var : { }
+declara_var :
               lista_id_var DOIS_PONTOS
-              tipo
-              {
-               char comando[100];
-               sprintf(comando, "AMEM %d", num_vars_tipo);
-               geraCodigo (NULL, comando);
-               num_vars_tipo = 0;
-              }
+              tipo {num_vars_tipo = 0;}
               PONTO_E_VIRGULA
 ;
 
@@ -97,14 +95,12 @@ lista_id_var: lista_id_var VIRGULA IDENT
                   insereVarTabela (&tabela, token, 0, deslocamento);
                   deslocamento++;
                   num_vars_tipo++;
-                  num_vars_comando++;
               }
             | IDENT 
                { /* insere vars na tabela de s�mbolos */
                   insereVarTabela (&tabela, token, 0, deslocamento);
                   deslocamento++;
                   num_vars_tipo++;
-                  num_vars_comando++;
                }
 ;
 
@@ -116,9 +112,9 @@ lista_idents: lista_idents VIRGULA IDENT
 comando_composto: T_BEGIN comandos T_END 
                      {
                         char comando[100];
-                        sprintf(comando, "DMEM %d", num_vars_comando);
+                        int num_vars = quantVariaveis (tabela, nivel_lexico);
+                        sprintf(comando, "DMEM %d", num_vars);
                         geraCodigo (NULL, comando);
-                        num_vars_comando = 0;
                      }
 ;
 
@@ -126,55 +122,170 @@ comandos: comandos comando_sem_rotulo |
           comando_sem_rotulo
 ;
 
-comando_sem_rotulo: atribuicao
+comando_sem_rotulo: atribuicao | write | read
 ;
+
+read: READ ABRE_PARENTESES lista_read FECHA_PARENTESES PONTO_E_VIRGULA
+
+lista_read:    lista_read VIRGULA termo_read
+             | termo_read
+;
+
+termo_read: IDENT 
+               {
+                  geraCodigo (NULL, "LEIT");
+
+                  char comando[100];
+                  simbolo_t var = buscaSimbolo (tabela, token);
+
+                  sprintf(comando, "ARMZ %d,%d", var.var.nivel, var.var.deslocamento);
+                  geraCodigo (NULL, comando);
+               }
+
+write:   WRITE ABRE_PARENTESES lista_write FECHA_PARENTESES PONTO_E_VIRGULA
+       | WRITE ABRE_PARENTESES FECHA_PARENTESES PONTO_E_VIRGULA
+;
+
+lista_write:   lista_write VIRGULA termo_write
+             | termo_write
+;
+
+termo_write:   NUM 
+                  {
+                     char comando[100];
+                     sprintf(comando, "CRCT %s", token);
+                     geraCodigo (NULL, comando);
+                     geraCodigo (NULL, "IMPR");
+                  }
+             | IDENT
+                  {
+                     char comando[100];
+
+                     simbolo_t var = buscaSimbolo (tabela, token);
+
+                     sprintf(comando, "CRVL %d,%d", var.var.nivel, var.var.deslocamento);
+                     geraCodigo (NULL, comando);
+                     geraCodigo (NULL, "IMPR");
+                  }
+             | string
+             | NOT IDENT 
+                  {
+                     char comando[100];
+                     simbolo_t var = buscaSimbolo (tabela, token);
+
+                     if (var.var.tipo != BOOL)
+                        imprimeErro ("Operação invalida.");
+                     
+                     sprintf(comando, "CRVL %d,%d", var.var.nivel, var.var.deslocamento);
+
+                     geraCodigo (NULL, comando);
+                     geraCodigo (NULL, "NEGA");
+                     geraCodigo (NULL, "IMPR");
+                  }
+;
+
+string: ASPAS palavra ASPAS
+;
+
+palavra: palavra IDENT |
 
 atribuicao: IDENT
                {
-                  empilha (token, &pilha);
+                  empilha (token, &pilha_simbolos);
                } 
             ATRIBUICAO expressao 
                {
                   char comando[100];
-                  char *destino = desempilha (&pilha);
+                  
+                  char *exp = desempilha (&pilha_tipos);
+                  char *destino = desempilha (&pilha_simbolos);
 
-                  simbolo_t var = busca (tabela, destino);
+                  simbolo_t var = buscaSimbolo (tabela, destino);
+                  
+                  int tipoExp;
+                  if (strcmp(exp, "INT") == 0)
+                     tipoExp = INT;
+                  else if (strcmp(exp, "BOOL") == 0)
+                     tipoExp = BOOL;
 
-                  if (var.var.tipo != INT)
+                  if (var.var.tipo != tipoExp)
                      imprimeErro ("Atribuição inválida.");
                      
                   sprintf(comando, "ARMZ %d,%d", var.var.nivel, var.var.deslocamento);
                   geraCodigo (NULL, comando);
                }
-            PONTO_E_VIRGULA
+            PONTO_E_VIRGULA 
+
+expressao:   expressao_simples operacao_booleana expressao_simples 
+               {
+                  validaTipos (&pilha_tipos, tabela, INT);
+
+                  char *comando = desempilha (&pilha_simbolos);
+                  geraCodigo (NULL, comando);
+
+                  empilha ("BOOL", &pilha_tipos);
+               }
+           | expressao_simples
 ;
 
-expressao: expressao_simples operacao_boleana expressao_simples |
-           expressao_simples
+operacao_booleana:   IGUAL      { empilha ("CMIG", &pilha_simbolos); }
+                   | DIFERENTE  { empilha ("CMDG", &pilha_simbolos); }
+                   | MENOR      { empilha ("CMME", &pilha_simbolos); }
+                   | MAIOR      { empilha ("CMMA", &pilha_simbolos); }
+                   | MENORI     { empilha ("CMEG", &pilha_simbolos); }
+                   | MAIORI     { empilha ("CMAG", &pilha_simbolos); }
 ;
 
-operacao_boleana: IGUAL | DIFERENTE | MENOR | MAIOR | MENORI | MAIORI
+expressao_simples:   expressao_simples SOMA termo { validaTipos (&pilha_tipos, tabela, INT); geraCodigo (NULL, "SOMA"); empilha ("INT", &pilha_tipos);}
+                   | expressao_simples SUBT termo { validaTipos (&pilha_tipos, tabela, INT); geraCodigo (NULL, "SUBT"); empilha ("INT", &pilha_tipos);}
+                   | expressao_simples OR termo   { validaTipos (&pilha_tipos, tabela, BOOL); geraCodigo (NULL, "DISJ"); empilha ("BOOL", &pilha_tipos);}
+                   | SUBT termo_solto
+                   | SOMA termo
+                   | termo
 ;
 
-expressao_simples: mais_ou_menos termo
-                  | mais_ou_menos termo SOMA termo { /* gera codigo da soma */ }
-                  | mais_ou_menos termo SUBT termo
-                  | mais_ou_menos termo OR termo
-                     {
-                        char *op = desempilha (&pilha);
-                        geraCodigo (NULL, op);
-                     }
+termo_solto:  fator_solto
+            | fator_solto MULT fator { validaTipos (&pilha_tipos, tabela, INT); geraCodigo (NULL, "MULT"); empilha ("INT", &pilha_tipos);}
+            | fator_solto DIVI fator { validaTipos (&pilha_tipos, tabela, INT); geraCodigo (NULL, "DIVI"); empilha ("INT", &pilha_tipos);}
 ;
 
-mais_ou_menos: SOMA | SUBT |;
+fator_solto: NUM
+               {
+                  char comando[100];
+                  sprintf(comando, "CRCT -%s", token);
+                  geraCodigo (NULL, comando);
+
+                  empilha ("INT", &pilha_tipos);
+               }
+            | IDENT
+               {
+                  char comando[100];
+                  simbolo_t var = buscaSimbolo (tabela, token);
+
+                  if (var.var.tipo != INT) {
+                     sprintf(comando, "Tipo da variavel %s invalida.", token);
+                     imprimeErro (comando);
+                  }
+
+                  sprintf(comando, "CRVL %d,%d", var.var.nivel, var.var.deslocamento);
+                  geraCodigo (NULL, comando);
+                  geraCodigo (NULL, "INVR");
+
+                  if (var.var.tipo == INT)
+                     empilha ("INT", &pilha_tipos);
+                  else
+                     empilha ("BOOL", &pilha_tipos);
+               }
+            | ABRE_PARENTESES expressao FECHA_PARENTESES
+               {
+                  geraCodigo (NULL, "INVR");
+               }
+;
 
 termo: fator
-     | fator MULT fator
-     | fator DIV fator
-     | fator AND fator
-//                  SUBT {empilha ("SUBT", &pilha);} |
-//                  DIVI {empilha ("DIVI", &pilha);} |
-//                  MULT {empilha ("MULT", &pilha);}
+     | fator MULT fator { validaTipos (&pilha_tipos, tabela, INT); geraCodigo (NULL, "MULT");  empilha ("INT", &pilha_tipos);}
+     | fator DIVI fator { validaTipos (&pilha_tipos, tabela, INT); geraCodigo (NULL, "DIVI");  empilha ("INT", &pilha_tipos);}
+     | fator AND fator  { validaTipos (&pilha_tipos, tabela, BOOL); geraCodigo (NULL, "CONJ"); empilha ("BOOL", &pilha_tipos);}
 ;
 
 fator: NUM
@@ -182,18 +293,39 @@ fator: NUM
             char comando[100];
             sprintf(comando, "CRCT %s", token);
             geraCodigo (NULL, comando);
+
+            empilha ("INT", &pilha_tipos);
          }
       | IDENT
          {
             char comando[100];
-            simbolo_t var = busca (tabela, token);
+            simbolo_t var = buscaSimbolo (tabela, token);
 
             sprintf(comando, "CRVL %d,%d", var.var.nivel, var.var.deslocamento);
             geraCodigo (NULL, comando);
+
+            if (var.var.tipo == INT)
+               empilha ("INT", &pilha_tipos);
+            else
+               empilha ("BOOL", &pilha_tipos);
          }
       | ABRE_PARENTESES expressao FECHA_PARENTESES
-      | NOT fator
+      | NOT fator 
+            { 
+               char *fator = desempilha (&pilha_tipos);
+
+               if (strcmp(fator, "BOOL") != 0)
+                  imprimeErro ("Atribuição inválida.");
+
+               geraCodigo (NULL, "NEGA");
+
+               empilha ("BOOL", &pilha_tipos);
+            }
+      | true_false
 ;
+
+true_false:   TRUE  { geraCodigo (NULL, "CRCT 1"); empilha ("BOOL", &pilha_tipos); } 
+            | FALSE { geraCodigo (NULL, "CRCT 0"); empilha ("BOOL", &pilha_tipos); } 
 
 %%
 int main (int argc, char** argv) {
@@ -216,7 +348,9 @@ int main (int argc, char** argv) {
  *  Inicia a Tabela de S�mbolos
  * ------------------------------------------------------------------- */
    inicializa_tabela(&tabela);
-   inicializa_pilha(&pilha);
+   inicializa_pilha(&pilha_simbolos);
+   inicializa_pilha(&pilha_tipos);
+   inicializa_pilha(&rotulos);
 
    yyin=fp;
    yyparse();

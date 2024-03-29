@@ -47,7 +47,6 @@ void imprime (tabela_simbolos_t ts) {
             case PARAMETRO_FORMAL: printf ("%s PARAMETRO_FORMAL\n", ts.itens[i].param.nome);break;
             case PROCEDIMENTO: printf ("%s PROCEDIMENTO\n", ts.itens[i].proc.nome);break;
             case FUNCAO: printf ("%s FUNCAO\n", ts.itens[i].func.nome);break;
-            case ROTULO: printf ("%s ROTULO\n", ts.itens[i].rot.nome);break;
         }
     }
 
@@ -71,4 +70,48 @@ void atualizaTipoVar (tabela_simbolos_t *ts, int tipo, int quant) {
         ts->itens[i].var.tipo = tipo;
         quant--;
     }
+}
+
+int quantVariaveis (tabela_simbolos_t ts, int nivel) {
+    for (int i = ts.topo; i >= 0; i--) {
+        if ((ts.itens[i].tipo == VARIAVEL) && (ts.itens[i].var.nivel == nivel))
+            return ts.itens[i].var.deslocamento + 1;
+    }
+
+    return 0;
+}
+
+simbolo_t buscaSimbolo (tabela_simbolos_t tabela, char* nome) {
+  simbolo_t var = busca (tabela, nome);
+  char comando[100];
+
+  if (var.tipo == -1) {
+      sprintf(comando, "Variavel %s não encontrada.", nome);
+      imprimeErro (comando);
+  }
+
+  return var;
+}
+
+void validaTipos (pilha_t* pilha, tabela_simbolos_t tabela, int tipo) {
+    char *v1 = desempilha (pilha);
+    char *v2 = desempilha (pilha);
+
+    int t1;
+    int t2;
+    if (strcmp(v1, "INT") == 0)
+        t1 = INT;
+    else if (strcmp(v1, "BOOL") == 0)
+        t1 = BOOL;
+
+    if (strcmp(v2, "INT") == 0)
+        t2 = INT;
+    else if (strcmp(v2, "BOOL") == 0)
+        t2 = BOOL;
+
+    
+    if ((t1 != tipo) || (t1 != t2))
+        imprimeErro ("Operação invalida.");
+
+    return;
 }

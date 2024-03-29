@@ -1,5 +1,7 @@
 #define MAX_TABELA 10000
 #define TAM_TOKEN 16
+#include "pilha.h"
+#include "compilador.h"
 
 enum tipo_variavel { INT, BOOL };
 enum tipo_passagem { VALOR, COPIA };
@@ -21,12 +23,8 @@ typedef struct {
 
 typedef struct {
    char nome[TAM_TOKEN];
-} rotulo_t;
-
-typedef struct {
-   char nome[TAM_TOKEN];
    int nivel;
-   rotulo_t rotulo;
+   char rotulo[TAM_TOKEN];
    int num_param;
    int *tipo_param;
    int *passagem_param;
@@ -36,7 +34,7 @@ typedef struct {
    char nome[TAM_TOKEN];
    int nivel;
    int tipo_retorno;
-   rotulo_t rotulo;
+   char rotulo[TAM_TOKEN];
    int num_param;
    int *tipo_param;
    int *passagem_param;
@@ -49,9 +47,8 @@ typedef struct {
       parametro_formal_t param;
       procedimento_t proc;
       funcao_t func;
-      rotulo_t rot;
    };
-   enum tipo_simbolo { VARIAVEL, PARAMETRO_FORMAL, PROCEDIMENTO, FUNCAO, ROTULO } tipo;
+   enum tipo_simbolo { VARIAVEL, PARAMETRO_FORMAL, PROCEDIMENTO, FUNCAO } tipo;
 } simbolo_t;
 
 
@@ -75,3 +72,9 @@ void imprime (tabela_simbolos_t ts);
 void insereVarTabela (tabela_simbolos_t *ts, char* token, int nivel, int deslocamento);
 
 void atualizaTipoVar (tabela_simbolos_t *ts, int tipo, int quant);
+
+int quantVariaveis (tabela_simbolos_t ts, int nivel);
+
+simbolo_t buscaSimbolo (tabela_simbolos_t tabela, char* nome);
+
+void validaTipos (pilha_t* pilha, tabela_simbolos_t tabela, int tipo);

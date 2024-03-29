@@ -1,4 +1,4 @@
-#define MAX 1000
+#define MAX 10000
 #define TAM_TOKEN 16
 
 typedef struct pilha_t {
@@ -15,3 +15,5 @@ int empilha (char* x, pilha_t *p);  /*empilha o elemento x no topo, se funcionar
 char* desempilha (pilha_t *p);
 
 int tamanho_pilha (pilha_t p); /*retorna o tamanho da pilha*/
+
+void imprime_pilha (pilha_t *p);

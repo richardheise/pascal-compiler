@@ -317,6 +317,20 @@ of {
     return DIFERENTE;
 }
 
+\' {
+    simbolo = simb_aspas;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME("aspas  ");
+    return ASPAS;
+}
+
+\" {
+    simbolo = simb_aspas_duplas;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME("aspas duplas  ");
+    return ASPASDUPLAS;
+}
+
 {ident} { 
     simbolo = simb_identificador;
     strncpy (token, yytext, TAM_TOKEN);
