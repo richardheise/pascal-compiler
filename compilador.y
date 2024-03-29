@@ -149,25 +149,32 @@ atribuicao: IDENT
             PONTO_E_VIRGULA
 ;
 
-expressao: expressao operacao_boleana expressao_simples |
+expressao: expressao_simples operacao_boleana expressao_simples |
            expressao_simples
+;
 
 operacao_boleana: IGUAL | DIFERENTE | MENOR | MAIOR | MENORI | MAIORI
 ;
 
-expressao_simples: expressao_simples operacao_inteira fator
+expressao_simples: mais_ou_menos termo
+                  | mais_ou_menos termo SOMA termo { /* gera codigo da soma */ }
+                  | mais_ou_menos termo SUBT termo
+                  | mais_ou_menos termo OR termo
                      {
                         char *op = desempilha (&pilha);
                         geraCodigo (NULL, op);
                      }
-                   |
-                   fator 
 ;
 
-operacao_inteira: SOMA {empilha ("SOMA", &pilha);} |
-                  SUBT {empilha ("SUBT", &pilha);} |
-                  DIVI {empilha ("DIVI", &pilha);} |
-                  MULT {empilha ("MULT", &pilha);}
+mais_ou_menos: SOMA | SUBT |;
+
+termo: fator
+     | fator MULT fator
+     | fator DIV fator
+     | fator AND fator
+//                  SUBT {empilha ("SUBT", &pilha);} |
+//                  DIVI {empilha ("DIVI", &pilha);} |
+//                  MULT {empilha ("MULT", &pilha);}
 ;
 
 fator: NUM
@@ -184,6 +191,8 @@ fator: NUM
             sprintf(comando, "CRVL %d,%d", var.var.nivel, var.var.deslocamento);
             geraCodigo (NULL, comando);
          }
+      | ABRE_PARENTESES expressao FECHA_PARENTESES
+      | NOT fator
 ;
 
 %%
