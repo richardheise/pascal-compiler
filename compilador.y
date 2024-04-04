@@ -123,16 +123,105 @@ comando_composto:
 ;
 
 comandos:
-   comandos comando_sem_rotulo
+   comandos PONTO_E_VIRGULA comando_sem_rotulo
    | comando_sem_rotulo
 ;
 
 comando_sem_rotulo:
-   atribuicao | write | read
+   atribuicao 
+   | comando_repetitivo
+   | comando_condicional
+   | write 
+   | read
+   |
+;
+
+comando_repetitivo:
+   WHILE
+{
+   char rotulo[100];
+   sprintf(rotulo, "R%02d", num_rotulos++);
+   empilha(rotulo, &pilha_simbolos);
+   geraCodigo(rotulo, "NADA");
+}
+   expressao
+{
+   char rotulo[50];
+   sprintf(rotulo, "R%02d", num_rotulos++);
+   empilha(rotulo, &pilha_simbolos);
+
+   char comando[100];
+   sprintf(comando, "DSVF %s", rotulo);
+   geraCodigo(NULL, comando);
+}
+   DO T_BEGIN comandos T_END
+{
+   char *rotEnd = desempilha(&pilha_simbolos);
+   char *rotWhile = desempilha(&pilha_simbolos);
+
+   char comando[100];
+
+   sprintf(comando, "DSVS %s", rotWhile);
+   geraCodigo(NULL, comando);
+
+   geraCodigo(rotEnd, "NADA");
+}
+;
+
+comando_condicional:
+   IF expressao
+{
+   char rotulo[50];
+   sprintf(rotulo, "R%02d", num_rotulos++);
+   empilha(rotulo, &pilha_simbolos);
+
+   char comando[100];
+   sprintf(comando, "DSVF %s", rotulo);
+   geraCodigo(NULL, comando);
+} 
+   THEN comando_sem_rotulo
+{
+   char rotulo[50];
+   sprintf(rotulo, "R%02d", num_rotulos++);
+   empilha(rotulo, &pilha_simbolos);
+
+   char comando[100];
+   sprintf(comando, "DSVS %s", rotulo);
+   geraCodigo(NULL, comando);
+}
+   ELSE 
+{
+   char *rotEnd = desempilha(&pilha_simbolos);
+   char *rotThen = desempilha(&pilha_simbolos);
+
+   geraCodigo(rotThen, "NADA");
+
+   empilha(rotEnd, &pilha_simbolos);
+}
+   comando_sem_rotulo
+{
+   char *rotEnd = desempilha(&pilha_simbolos);
+   geraCodigo(rotEnd, "NADA");
+}
+   | IF expressao 
+{
+   char rotulo[50];
+   sprintf(rotulo, "R%02d", num_rotulos++);
+   empilha(rotulo, &pilha_simbolos);
+
+   char comando[100];
+   sprintf(comando, "DSVF %s", rotulo);
+   geraCodigo(NULL, comando);
+}
+   THEN comando_sem_rotulo
+{
+   char *rotEnd = desempilha(&pilha_simbolos);
+   geraCodigo(rotEnd, "NADA");
+}
 ;
 
 read:
-   READ ABRE_PARENTESES lista_read FECHA_PARENTESES PONTO_E_VIRGULA
+   READ ABRE_PARENTESES lista_read FECHA_PARENTESES
 ;
 
 lista_read:
@@ -154,8 +243,8 @@ termo_read:
 ;
 
 write:
-   WRITE ABRE_PARENTESES lista_write FECHA_PARENTESES PONTO_E_VIRGULA
-   | WRITE ABRE_PARENTESES FECHA_PARENTESES PONTO_E_VIRGULA
+   WRITE ABRE_PARENTESES lista_write FECHA_PARENTESES 
+   | WRITE ABRE_PARENTESES FECHA_PARENTESES 
 ;
 
 lista_write:
@@ -181,7 +270,6 @@ termo_write:
    geraCodigo(NULL, comando);
    geraCodigo(NULL, "IMPR");
 }
-   | string
    | NOT IDENT
 {
    char comando[100];
@@ -198,13 +286,6 @@ termo_write:
 }
 ;
 
-string:
-   ASPAS palavra ASPAS
-;
-
-palavra:
-   palavra IDENT
-;
 
 /*-----------------------------------------------------------------------*
 * Atribuição
@@ -214,7 +295,7 @@ atribuicao:
 {
    empilha(token, &pilha_simbolos);
 }
-   ATRIBUICAO expressao PONTO_E_VIRGULA
+   ATRIBUICAO expressao
 {
    char comando[100];
 

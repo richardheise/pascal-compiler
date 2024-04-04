@@ -45,4 +45,3 @@ void geraCodigo (char*, char*);
 int yylex();
 void yyerror(const char *s);
 int imprimeErro ( char* erro );
-char* geraRotulo (int num_rotulo);
