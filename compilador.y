@@ -10,6 +10,7 @@
 #include "tabela_simbolos.h"
 
 int num_vars_tipo = 0;
+int num_vars = 0;
 int deslocamento = 0;
 int nivel_lexico = 0;
 int num_rotulos = 0;
@@ -54,16 +55,16 @@ bloco:
    definicoes_bloco comando_composto
 ;
 
-definicoes_bloco: 
+definicoes_bloco:
    parte_declara_rotulos
-   | parte_define_tipos
-   | parte_declara_vars
-   | parte_declara_sub_rotinas
-   | 
+   parte_define_tipos
+   parte_declara_vars
+   parte_declara_sub_rotinas
 ;
 
 parte_declara_rotulos:
    LABEL labels
+   |
 ;
 
 labels:
@@ -73,6 +74,7 @@ labels:
 
 parte_define_tipos:
    TYPE types
+   |
 ;
 
 types:
@@ -85,14 +87,21 @@ definicao_tipo:
 ;
 
 parte_declara_sub_rotinas:
-   parte_declara_sub_rotinas sub_rotinas
-   | sub_rotinas
+   declara_sub_rotinas
+   |
 ;
 
-sub_rotinas:
+declara_sub_rotinas:
+  declara_sub_rotinas declara_sub_rotina PONTO_E_VIRGULA
+  | declara_sub_rotina PONTO_E_VIRGULA
+;
+
+declara_sub_rotina:
    declaracao_procedure
    | declaracao_function
 ;
+
+
 
 parte_declara_vars:
    var
@@ -102,6 +111,7 @@ parte_declara_vars:
    sprintf(comando, "AMEM %d", num_vars);
    geraCodigo(NULL, comando);
 }
+   |
 ;
 
 var: 
@@ -133,15 +143,15 @@ tipo:
 
 lista_id_var:
    lista_id_var VIRGULA IDENT
-   { /* insere última vars na tabela de símbolos */
-      insereVarTabela(&tabela, token, 0, deslocamento);
-      deslocamento++;
-      num_vars_tipo++;
-   }
+{ /* insere última vars na tabela de símbolos */
+   insereVarTabela(&tabela, token, nivel_lexico, deslocamento);
+   deslocamento++;
+   num_vars_tipo++;
+}
    | IDENT
 {
    /* insere vars na tabela de símbolos */
-   insereVarTabela(&tabela, token, 0, deslocamento);
+   insereVarTabela(&tabela, token, nivel_lexico, deslocamento);
    deslocamento++;
    num_vars_tipo++;
 }
@@ -224,7 +234,7 @@ ih_then:
    IF expressao
 {
    char rotulo[50];
-   sprintf(rotulo, "R%02d", num_rotulos++); // R02
+   sprintf(rotulo, "R%02d", num_rotulos++);
    empilha(rotulo, &pilha_simbolos);
 
    char comando[100];
@@ -237,7 +247,7 @@ if_else:
    ELSE 
 {
    char rotulo[50];
-   sprintf(rotulo, "R%02d", num_rotulos++); // R03
+   sprintf(rotulo, "R%02d", num_rotulos++);
 
    char comando[100];
    sprintf(comando, "DSVS %s", rotulo);
@@ -319,35 +329,92 @@ termo_write:
 }
 ;
 
-
 declaracao_procedure:
-   PROCEDURE IDENT parametros_formais PONTO_E_VIRGULA bloco
+   PROCEDURE IDENT
+{
+   nivel_lexico++;
+   num_vars = 0;
+   num_vars_tipo = 0;
+   
+   char rotulo[50];
+   sprintf(rotulo, "R%02d", num_rotulos++);
+
+   insereProcTabela(&tabela, token, rotulo, nivel_lexico);
+}
+   parametros_formais PONTO_E_VIRGULA bloco
 ;
 
-
 declaracao_function:
-   FUNCTION IDENT parametros_formais PONTO_E_VIRGULA IDENT PONTO_E_VIRGULA bloco
+   FUNCTION IDENT 
+   parametros_formais DOIS_PONTOS IDENT PONTO_E_VIRGULA bloco
 ;
 
 parametros_formais:
-   ABRE_PARENTESES parametros_formais_rep FECHA_PARENTESES
+   ABRE_PARENTESES lista_parametros_formais FECHA_PARENTESES
+{
+   atualizaDeslocamentoParam(&tabela, nivel_lexico, num_vars);
+}
+   |
 ;
 
-parametros_formais_rep:
-   parametros_formais_rep PONTO_E_VIRGULA secao_parametros_formais
+lista_parametros_formais:
+   lista_parametros_formais PONTO_E_VIRGULA secao_parametros_formais
    | secao_parametros_formais
 ;
 
-secao_parametros_formais: 
-   parametros_rotinas
-   | FUNCTION lista_idents DOIS_PONTOS IDENT
-   | PROCEDURE lista_idents
+secao_parametros_formais:
+   lista_var_formais
+   | FUNCTION lista_idents_formais DOIS_PONTOS IDENT
+   | PROCEDURE lista_idents_formais
+   |
 ;
 
-parametros_rotinas:
-   VAR lista_idents DOIS_PONTOS IDENT
-   | lista_idents DOIS_PONTOS IDENT
+lista_var_formais:
+   VAR {empilha("REF", &pilha_tipos);} lista_idents_formais DOIS_PONTOS IDENT
+   | {empilha("VALOR", &pilha_tipos);} lista_idents_formais DOIS_PONTOS IDENT
+{
+   if (strcmp(token, "integer") == 0)
+      atualizaTipoParam(&tabela, INT, num_vars_tipo);
+   else if (strcmp(token, "boolean") == 0)
+      atualizaTipoParam(&tabela, BOOL, num_vars_tipo);
+   else
+      imprimeErro("Tipo de variavel não aceito.");
+
+   num_vars_tipo = 0;
+   desempilha(&pilha_tipos);
+}
 ;
+
+lista_idents_formais:
+   lista_idents_formais VIRGULA IDENT
+{
+   char *passagem = desempilha(&pilha_tipos);
+   if (strcmp(passagem, "VALOR") == 0) 
+      insereParamTabela(&tabela, token, nivel_lexico, VALOR);
+   else if (strcmp(passagem, "REF") == 0)
+      insereParamTabela(&tabela, token, nivel_lexico, REFERENCIA);
+
+   num_vars_tipo++;
+   num_vars++;
+
+   empilha (passagem, &pilha_tipos);
+}
+   | IDENT
+{
+   char *passagem = desempilha(&pilha_tipos);
+   if (strcmp(passagem, "VALOR") == 0) 
+      insereParamTabela(&tabela, token, nivel_lexico, VALOR);
+
+   else if (strcmp(passagem, "REF") == 0)
+      insereParamTabela(&tabela, token, nivel_lexico, REFERENCIA);
+
+   num_vars_tipo++;
+   num_vars++;
+
+   empilha (passagem, &pilha_tipos);
+}
+;
+
 
 
 /*-----------------------------------------------------------------------*

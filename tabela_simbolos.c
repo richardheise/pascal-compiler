@@ -44,8 +44,8 @@ void imprime (tabela_simbolos_t ts) {
     for (int i = 0; i <= ts.topo; i++) {
         switch (ts.itens[i].tipo) {
             case VARIAVEL: printf ("%s VARIAVEL Tipo:%d Nivel:%d Deslocamento:%d\n", ts.itens[i].var.nome, ts.itens[i].var.tipo, ts.itens[i].var.nivel, ts.itens[i].var.deslocamento);break;
-            case PARAMETRO_FORMAL: printf ("%s PARAMETRO_FORMAL\n", ts.itens[i].param.nome);break;
-            case PROCEDIMENTO: printf ("%s PROCEDIMENTO\n", ts.itens[i].proc.nome);break;
+            case PARAMETRO_FORMAL: printf ("%s PARAMETRO_FORMAL Tipo:%d Nivel:%d Deslocamento:%d Passagem:%d\n", ts.itens[i].param.nome, ts.itens[i].param.tipo, ts.itens[i].param.nivel, ts.itens[i].param.deslocamento, ts.itens[i].param.passagem);break;
+            case PROCEDIMENTO: printf ("%s PROCEDIMENTO Param:%d\n", ts.itens[i].proc.nome, ts.itens[i].proc.num_param);break;
             case FUNCAO: printf ("%s FUNCAO\n", ts.itens[i].func.nome);break;
         }
     }
@@ -60,8 +60,36 @@ void insereVarTabela (tabela_simbolos_t *ts, char* token, int nivel, int desloca
     strncpy(v.nome, token, TAM_TOKEN);
     v.nivel = nivel;
     v.deslocamento = deslocamento;
+    
     s.tipo = VARIAVEL;
     s.var = v;
+    insere (ts, s);
+}
+
+void insereProcTabela (tabela_simbolos_t *ts, char* token, char* rotulo, int nivel) {
+    procedimento_t p;
+    simbolo_t s;
+
+    strncpy(p.nome, token, TAM_TOKEN);
+    strncpy(p.rotulo, rotulo, TAM_TOKEN);
+    p.nivel = nivel;
+    p.num_param = 0;
+    
+    s.tipo = PROCEDIMENTO;
+    s.proc = p;
+    insere (ts, s);
+}
+
+void insereParamTabela (tabela_simbolos_t *ts, char* token, int nivel, int passagem) {
+    parametro_formal_t pf;
+    simbolo_t s;
+
+    strncpy(pf.nome, token, TAM_TOKEN);
+    pf.nivel = nivel;
+    pf.passagem = passagem;
+    
+    s.tipo = PARAMETRO_FORMAL;
+    s.param = pf;
     insere (ts, s);
 }
 
@@ -70,6 +98,34 @@ void atualizaTipoVar (tabela_simbolos_t *ts, int tipo, int quant) {
         ts->itens[i].var.tipo = tipo;
         quant--;
     }
+}
+
+void atualizaTipoParam (tabela_simbolos_t *ts, int tipo, int quant) {
+    for (int i = ts->topo; quant > 0; i--) {
+        ts->itens[i].param.tipo = tipo;
+        quant--;
+    }
+}
+
+void atualizaDeslocamentoParam (tabela_simbolos_t *ts, int nivel, int quant) {
+    int deslocamento = -4;
+    int iProc;
+    iProc = ts->topo - quant;
+    ts->itens[iProc].proc.num_param = quant;
+
+    for (int i = ts->topo; quant > 0; i--) {
+        ts->itens[i].param.deslocamento = deslocamento;
+
+        ts->itens[iProc].proc.tipo_param[quant - 1] = ts->itens[i].param.tipo;
+        ts->itens[iProc].proc.passagem_param[quant - 1] = ts->itens[i].param.passagem;
+        
+        quant--;
+        deslocamento--;
+    }
+
+    printf ("\nTESTE\n");
+    for (int i = 0; i < ts->itens[iProc].proc.num_param; i++)
+        printf ("%d %d\n", ts->itens[iProc].proc.tipo_param[i], ts->itens[iProc].proc.tipo_param[i]);
 }
 
 int quantVariaveis (tabela_simbolos_t ts, int nivel) {

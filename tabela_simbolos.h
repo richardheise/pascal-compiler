@@ -1,10 +1,11 @@
-#define MAX_TABELA 10000
+#define MAX_TABELA 1500
+#define MAX_PARAM 20
 #define TAM_TOKEN 16
 #include "pilha.h"
 #include "compilador.h"
 
 enum tipo_variavel { INT, BOOL };
-enum tipo_passagem { VALOR, COPIA };
+enum tipo_passagem { VALOR, REFERENCIA };
 
 typedef struct {
    char nome[TAM_TOKEN];
@@ -26,8 +27,8 @@ typedef struct {
    int nivel;
    char rotulo[TAM_TOKEN];
    int num_param;
-   int *tipo_param;
-   int *passagem_param;
+   int tipo_param[MAX_PARAM];
+   int passagem_param[MAX_PARAM];
 } procedimento_t;
 
 typedef struct {
@@ -36,8 +37,8 @@ typedef struct {
    int tipo_retorno;
    char rotulo[TAM_TOKEN];
    int num_param;
-   int *tipo_param;
-   int *passagem_param;
+   int tipo_param[MAX_PARAM];
+   int passagem_param[MAX_PARAM];
 } funcao_t;
 
 
@@ -71,7 +72,15 @@ void imprime (tabela_simbolos_t ts);
 
 void insereVarTabela (tabela_simbolos_t *ts, char* token, int nivel, int deslocamento);
 
+void insereProcTabela (tabela_simbolos_t *ts, char* token, char* rotulo, int nivel);
+
+void insereParamTabela (tabela_simbolos_t *ts, char* token, int nivel, int passagem);
+
 void atualizaTipoVar (tabela_simbolos_t *ts, int tipo, int quant);
+
+void atualizaTipoParam (tabela_simbolos_t *ts, int tipo, int quant);
+
+void atualizaDeslocamentoParam (tabela_simbolos_t *ts, int nivel, int quant);
 
 int quantVariaveis (tabela_simbolos_t ts, int nivel);
 
