@@ -128,6 +128,13 @@ label {
     return LABEL;
 }
 
+type { 
+    simbolo = simb_type;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" type ");
+    return TYPE;
+}
+
 procedure { 
     simbolo = simb_procedure;
     strncpy (token, yytext, TAM_TOKEN);

@@ -23,12 +23,15 @@ pilha_t rotulos;
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
 %token VIRGULA PONTO_E_VIRGULA DOIS_PONTOS PONTO
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
-%token LABEL PROCEDURE FUNCTION OF
+%token LABEL PROCEDURE FUNCTION OF TYPE
 %token TRUE FALSE IF THEN ELSE WHILE DO GOTO
 %token READ WRITE OR AND NOT
 %token SOMA SUBT MULT DIVI
 %token MENOR MAIOR IGUAL MENORI MAIORI
 %token INTEGER BOOLEAN ARRAY NUM DIFERENTE ASPAS ASPASDUPLAS
+
+%nonassoc LOWER_THAN_ELSE
+%nonassoc ELSE
 %%
 
 programa:
@@ -48,25 +51,65 @@ programa:
 * Variáveis                                                              
 *------------------------------------------------------------------------*/
 bloco:
-   parte_declara_vars
-   {
-      char comando[100];
-      int num_vars = quantVariaveis(tabela, nivel_lexico);
-      sprintf(comando, "AMEM %d", num_vars);
-      geraCodigo(NULL, comando);
-   }
-   comando_composto
+   definicoes_bloco comando_composto
+;
+
+definicoes_bloco: 
+   parte_declara_rotulos
+   | parte_define_tipos
+   | parte_declara_vars
+   | parte_declara_sub_rotinas
+   | 
+;
+
+parte_declara_rotulos:
+   LABEL labels
+;
+
+labels:
+   labels VIRGULA NUM
+   | NUM
+;
+
+parte_define_tipos:
+   TYPE types
+;
+
+types:
+   types PONTO_E_VIRGULA definicao_tipo
+   | definicao_tipo
+;
+
+definicao_tipo:
+   IDENT IGUAL tipo
+;
+
+parte_declara_sub_rotinas:
+   parte_declara_sub_rotinas sub_rotinas
+   | sub_rotinas
+;
+
+sub_rotinas:
+   declaracao_procedure
+   | declaracao_function
 ;
 
 parte_declara_vars:
    var
+{
+   char comando[100];
+   int num_vars = quantVariaveis(tabela, nivel_lexico);
+   sprintf(comando, "AMEM %d", num_vars);
+   geraCodigo(NULL, comando);
+}
 ;
 
-var: VAR declara_vars
-   |
+var: 
+   VAR declara_vars
 ;
 
-declara_vars: declara_vars declara_var
+declara_vars: 
+   declara_vars declara_var
    | declara_var
 ;
 
@@ -76,7 +119,8 @@ declara_var:
    PONTO_E_VIRGULA
 ;
 
-tipo: IDENT
+tipo: 
+   IDENT
 {
    if (strcmp(token, "integer") == 0)
       atualizaTipoVar(&tabela, INT, num_vars_tipo);
@@ -169,55 +213,44 @@ comando_repetitivo:
 ;
 
 comando_condicional:
+   ih_then if_else 
+{
+   char *rotulo = desempilha(&pilha_simbolos);
+   geraCodigo(rotulo, "NADA");
+}
+;
+
+ih_then:
    IF expressao
 {
    char rotulo[50];
-   sprintf(rotulo, "R%02d", num_rotulos++);
+   sprintf(rotulo, "R%02d", num_rotulos++); // R02
    empilha(rotulo, &pilha_simbolos);
 
    char comando[100];
    sprintf(comando, "DSVF %s", rotulo);
    geraCodigo(NULL, comando);
-} 
+}
    THEN comando_sem_rotulo
+
+if_else:
+   ELSE 
 {
    char rotulo[50];
-   sprintf(rotulo, "R%02d", num_rotulos++);
-   empilha(rotulo, &pilha_simbolos);
+   sprintf(rotulo, "R%02d", num_rotulos++); // R03
 
    char comando[100];
    sprintf(comando, "DSVS %s", rotulo);
    geraCodigo(NULL, comando);
-}
-   ELSE 
-{
-   char *rotEnd = desempilha(&pilha_simbolos);
-   char *rotThen = desempilha(&pilha_simbolos);
 
-   geraCodigo(rotThen, "NADA");
+   char *rotElse = desempilha(&pilha_simbolos);
 
-   empilha(rotEnd, &pilha_simbolos);
+   geraCodigo(rotElse, "NADA");
+
+   empilha(rotulo, &pilha_simbolos);
 }
    comando_sem_rotulo
-{
-   char *rotEnd = desempilha(&pilha_simbolos);
-   geraCodigo(rotEnd, "NADA");
-}
-   | IF expressao 
-{
-   char rotulo[50];
-   sprintf(rotulo, "R%02d", num_rotulos++);
-   empilha(rotulo, &pilha_simbolos);
-
-   char comando[100];
-   sprintf(comando, "DSVF %s", rotulo);
-   geraCodigo(NULL, comando);
-}
-   THEN comando_sem_rotulo
-{
-   char *rotEnd = desempilha(&pilha_simbolos);
-   geraCodigo(rotEnd, "NADA");
-}
+   | %prec LOWER_THAN_ELSE
 ;
 
 read:
@@ -284,6 +317,36 @@ termo_write:
    geraCodigo(NULL, "NEGA");
    geraCodigo(NULL, "IMPR");
 }
+;
+
+
+declaracao_procedure:
+   PROCEDURE IDENT parametros_formais PONTO_E_VIRGULA bloco
+;
+
+
+declaracao_function:
+   FUNCTION IDENT parametros_formais PONTO_E_VIRGULA IDENT PONTO_E_VIRGULA bloco
+;
+
+parametros_formais:
+   ABRE_PARENTESES parametros_formais_rep FECHA_PARENTESES
+;
+
+parametros_formais_rep:
+   parametros_formais_rep PONTO_E_VIRGULA secao_parametros_formais
+   | secao_parametros_formais
+;
+
+secao_parametros_formais: 
+   parametros_rotinas
+   | FUNCTION lista_idents DOIS_PONTOS IDENT
+   | PROCEDURE lista_idents
+;
+
+parametros_rotinas:
+   VAR lista_idents DOIS_PONTOS IDENT
+   | lista_idents DOIS_PONTOS IDENT
 ;
 
 
