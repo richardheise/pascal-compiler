@@ -356,9 +356,9 @@ expressao_simples:
 
 termo:
    fator
-   | fator MULT fator { validaTipos(&pilha_tipos, tabela, INT); geraCodigo(NULL, "MULT"); empilha("INT", &pilha_tipos); }
-   | fator DIVI fator { validaTipos(&pilha_tipos, tabela, INT); geraCodigo(NULL, "DIVI"); empilha("INT", &pilha_tipos); }
-   | fator AND fator { validaTipos(&pilha_tipos, tabela, BOOL); geraCodigo(NULL, "CONJ"); empilha("BOOL", &pilha_tipos); }
+   | termo MULT fator { validaTipos(&pilha_tipos, tabela, INT); geraCodigo(NULL, "MULT"); empilha("INT", &pilha_tipos); }
+   | termo DIVI fator { validaTipos(&pilha_tipos, tabela, INT); geraCodigo(NULL, "DIVI"); empilha("INT", &pilha_tipos); }
+   | termo AND fator { validaTipos(&pilha_tipos, tabela, BOOL); geraCodigo(NULL, "CONJ"); empilha("BOOL", &pilha_tipos); }
 ;
 
 fator:
