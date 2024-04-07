@@ -66,7 +66,7 @@ void inicializa_tabela (tabela_simbolos_t *ts);
 
 void insere (tabela_simbolos_t *ts, simbolo_t s); 
 
-void retira (tabela_simbolos_t *ts, int n); 
+void retira (tabela_simbolos_t *ts, int n);
 
 simbolo_t busca (tabela_simbolos_t ts, char* nome);
 
@@ -86,9 +86,10 @@ void atualizaDeslocamentoParam (tabela_simbolos_t *ts, int nivel, int quant);
 
 int quantVariaveis (tabela_simbolos_t ts, int nivel);
 
-simbolo_t buscaSimbolo (tabela_simbolos_t tabela, char* nome);
+simbolo_t buscaSimbolo (tabela_simbolos_t ts, char* nome);
 
-void validaTipos (pilha_t* pilha, tabela_simbolos_t tabela, int tipo);
+void validaTipos (pilha_t* pilha, int tipo);
 
-void empilhaNUM(char *token, pilha_t *pilha);
-void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, procedimento_t proc, pilha_t *pilha, tabela_simbolos_t tabela);
+void empilhaNUM (char *token, pilha_t *pilha);
+
+void empilhaIDENT (char *token, int ivar, int quantFator, int tipoOP, procedimento_t proc, pilha_t *pilha, tabela_simbolos_t ts);

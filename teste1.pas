@@ -13,7 +13,12 @@ program passRef(input, output);
         end;
         write(n,g)
     end;
+
+    procedure p2( n:integer;);
+    begin
+    end;
+
 begin
     k:=0;
-    p(3,k);
+    p(1,k);
 end.

@@ -133,8 +133,8 @@ int quantVariaveis (tabela_simbolos_t ts, int nivel) {
     return 0;
 }
 
-simbolo_t buscaSimbolo (tabela_simbolos_t tabela, char* nome) {
-  simbolo_t simbolo = busca (tabela, nome);
+simbolo_t buscaSimbolo (tabela_simbolos_t ts, char* nome) {
+  simbolo_t simbolo = busca (ts, nome);
   char comando[100];
 
   if (simbolo.tipo == -1) {
@@ -145,7 +145,7 @@ simbolo_t buscaSimbolo (tabela_simbolos_t tabela, char* nome) {
   return simbolo;
 }
 
-void validaTipos (pilha_t* pilha, tabela_simbolos_t tabela, int tipo) {
+void validaTipos (pilha_t* pilha, int tipo) {
     char *v1 = desempilha (pilha);
     char *v2 = desempilha (pilha);
 
@@ -178,9 +178,9 @@ void empilhaNUM(char *token, pilha_t *pilha) {
     return;
 }
 
-void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, procedimento_t proc, pilha_t *pilha, tabela_simbolos_t tabela) {
+void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, procedimento_t proc, pilha_t *pilha, tabela_simbolos_t ts) {
     char comando[100];
-    simbolo_t simbolo = buscaSimbolo(tabela, token);
+    simbolo_t simbolo = buscaSimbolo(ts, token);
 
     if (tipoOP == PROC) {
         if (ivar >= proc.num_param)

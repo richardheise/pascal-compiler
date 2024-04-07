@@ -102,12 +102,18 @@ definicao_tipo:
 
 parte_declara_sub_rotinas:
 {
-   num_rotulos++;
-   geraCodigo(NULL, "DSVS R00");
+   char rotulo[50];
+   sprintf(rotulo, "R%02d", num_rotulos++);
+   empilha(rotulo, &pilha_simbolos);
+
+   char comando[100];
+   sprintf(comando, "DSVS %s", rotulo);
+   geraCodigo(NULL, comando);
 } 
    declara_sub_rotinas
 {
-   geraCodigo("R00", "NADA");
+   char *rotulo = desempilha(&pilha_simbolos);
+   geraCodigo(rotulo, "NADA");
 }
    |
 ;
@@ -487,6 +493,9 @@ chamada_procedimento:
 }
    chamada_parametros
 {
+   if (ivar != procedimento.num_param)
+      imprimeErro ("Parametros invalidos.");
+
    char comando[100];
    sprintf(comando, "CHPR %s,%d", procedimento.rotulo, nivel_lexico);
    geraCodigo (NULL, comando);
@@ -500,6 +509,7 @@ chamada_parametros:
 
 lista_espressoes:
    espressoes
+   |
 ;
 
 espressoes:
@@ -568,7 +578,12 @@ atribuicao:
    if (var.var.tipo != tipoExp)
       imprimeErro("Atribuição inválida.");
 
-   sprintf(comando, "ARMZ %d,%d", var.var.nivel, var.var.deslocamento);
+   if (var.tipo == PARAMETRO_FORMAL && var.param.passagem == REFERENCIA) {
+      sprintf(comando, "ARMI %d,%d", var.var.nivel, var.var.deslocamento);
+   }
+   else {
+      sprintf(comando, "ARMZ %d,%d", var.var.nivel, var.var.deslocamento);
+   }
    geraCodigo(NULL, comando);
 }
 ;
@@ -579,7 +594,7 @@ atribuicao:
 expressao:
    expressao_simples operacao_booleana expressao_simples
 {
-   validaTipos(&pilha_tipos, tabela, INT);
+   validaTipos(&pilha_tipos, INT);
 
    char *comando = desempilha(&pilha_simbolos);
    geraCodigo(NULL, comando);
@@ -599,18 +614,18 @@ operacao_booleana:
 ;
 
 expressao_simples:
-   expressao_simples SOMA termo { validaTipos(&pilha_tipos, tabela, INT); geraCodigo(NULL, "SOMA"); empilha("INT", &pilha_tipos); }
-   | expressao_simples SUBT termo { validaTipos(&pilha_tipos, tabela, INT); geraCodigo(NULL, "SUBT"); empilha("INT", &pilha_tipos); }
-   | expressao_simples OR termo { validaTipos(&pilha_tipos, tabela, BOOL); geraCodigo(NULL, "DISJ"); empilha("BOOL", &pilha_tipos); }
+   expressao_simples SOMA termo { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "SOMA"); empilha("INT", &pilha_tipos); }
+   | expressao_simples SUBT termo { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "SUBT"); empilha("INT", &pilha_tipos); }
+   | expressao_simples OR termo { validaTipos(&pilha_tipos, BOOL); geraCodigo(NULL, "DISJ"); empilha("BOOL", &pilha_tipos); }
    | termo
 ;
 
 
 termo:
    fator
-   | termo MULT fator { validaTipos(&pilha_tipos, tabela, INT); geraCodigo(NULL, "MULT"); empilha("INT", &pilha_tipos); }
-   | termo DIVI fator { validaTipos(&pilha_tipos, tabela, INT); geraCodigo(NULL, "DIVI"); empilha("INT", &pilha_tipos); }
-   | termo AND fator { validaTipos(&pilha_tipos, tabela, BOOL); geraCodigo(NULL, "CONJ"); empilha("BOOL", &pilha_tipos); }
+   | termo MULT fator { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "MULT"); empilha("INT", &pilha_tipos); }
+   | termo DIVI fator { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "DIVI"); empilha("INT", &pilha_tipos); }
+   | termo AND fator { validaTipos(&pilha_tipos, BOOL); geraCodigo(NULL, "CONJ"); empilha("BOOL", &pilha_tipos); }
 ;
 
 fator:
