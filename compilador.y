@@ -15,6 +15,13 @@ int deslocamento = 0;
 int nivel_lexico = 0;
 int num_rotulos = 0;
 
+int ivar = 0;
+int tipoOP = 0;
+int num_ident;
+int quant_fator = 0;
+int tipo_fator;
+procedimento_t procedimento;
+
 tabela_simbolos_t tabela;
 pilha_t pilha_tipos;
 pilha_t pilha_simbolos;
@@ -42,10 +49,17 @@ programa:
    PROGRAM IDENT
    ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
    bloco PONTO
-   {
-      geraCodigo(NULL, "PARA");
-      imprime(tabela);
+{
+   char comando[100];
+   int n_vars = quantVariaveis(tabela, nivel_lexico);
+   if (n_vars > 0) {
+      sprintf(comando, "DMEM %d", n_vars);
+      geraCodigo(NULL, comando);
    }
+
+   geraCodigo(NULL, "PARA");
+   imprime(tabela);
+}
 ;
 
 /*-----------------------------------------------------------------------*
@@ -87,7 +101,14 @@ definicao_tipo:
 ;
 
 parte_declara_sub_rotinas:
+{
+   num_rotulos++;
+   geraCodigo(NULL, "DSVS R00");
+} 
    declara_sub_rotinas
+{
+   geraCodigo("R00", "NADA");
+}
    |
 ;
 
@@ -98,6 +119,17 @@ declara_sub_rotinas:
 
 declara_sub_rotina:
    declaracao_procedure
+{
+   char comando[100];
+   int n_vars = quantVariaveis(tabela, nivel_lexico);
+   if (n_vars > 0) {
+      sprintf(comando, "DMEM %d", n_vars);
+      geraCodigo(NULL, comando);
+   }
+
+   sprintf(comando, "RTPR %d,%d", nivel_lexico, num_vars);
+   geraCodigo(NULL, comando);
+}
    | declaracao_function
 ;
 
@@ -168,12 +200,6 @@ lista_idents:
 *------------------------------------------------------------------------*/
 comando_composto:
    T_BEGIN comandos T_END
-{
-   char comando[100];
-   int num_vars = quantVariaveis(tabela, nivel_lexico);
-   sprintf(comando, "DMEM %d", num_vars);
-   geraCodigo(NULL, comando);
-}
 ;
 
 comandos:
@@ -182,12 +208,26 @@ comandos:
 ;
 
 comando_sem_rotulo:
-   atribuicao 
-   | comando_repetitivo
+   comando_com_ident
+   | comando_repetitivo 
    | comando_condicional
+   | comando_composto
    | write 
    | read
    |
+;
+
+comando_com_ident:
+   IDENT 
+{
+   empilha(token, &pilha_simbolos);
+}
+   atr_proc
+;
+
+atr_proc:
+   atribuicao
+   | chamada_procedimento
 ;
 
 comando_repetitivo:
@@ -197,6 +237,8 @@ comando_repetitivo:
    sprintf(rotulo, "R%02d", num_rotulos++);
    empilha(rotulo, &pilha_simbolos);
    geraCodigo(rotulo, "NADA");
+
+   tipoOP = PADRAO;
 }
    expressao
 {
@@ -208,7 +250,7 @@ comando_repetitivo:
    sprintf(comando, "DSVF %s", rotulo);
    geraCodigo(NULL, comando);
 }
-   DO T_BEGIN comandos T_END
+   DO comando_sem_rotulo
 {
    char *rotEnd = desempilha(&pilha_simbolos);
    char *rotWhile = desempilha(&pilha_simbolos);
@@ -223,15 +265,15 @@ comando_repetitivo:
 ;
 
 comando_condicional:
-   ih_then if_else 
+   if_then if_else 
 {
    char *rotulo = desempilha(&pilha_simbolos);
    geraCodigo(rotulo, "NADA");
 }
 ;
 
-ih_then:
-   IF expressao
+if_then:
+   IF {tipoOP = PADRAO;} expressao
 {
    char rotulo[50];
    sprintf(rotulo, "R%02d", num_rotulos++);
@@ -262,6 +304,8 @@ if_else:
    comando_sem_rotulo
    | %prec LOWER_THAN_ELSE
 ;
+
+
 
 read:
    READ ABRE_PARENTESES lista_read FECHA_PARENTESES
@@ -333,6 +377,7 @@ declaracao_procedure:
    PROCEDURE IDENT
 {
    nivel_lexico++;
+   deslocamento = 0;
    num_vars = 0;
    num_vars_tipo = 0;
    
@@ -340,6 +385,10 @@ declaracao_procedure:
    sprintf(rotulo, "R%02d", num_rotulos++);
 
    insereProcTabela(&tabela, token, rotulo, nivel_lexico);
+
+   char comando[100];
+   sprintf(comando, "ENPR %d", nivel_lexico);
+   geraCodigo(rotulo, comando);
 }
    parametros_formais PONTO_E_VIRGULA bloco
 ;
@@ -371,6 +420,18 @@ secao_parametros_formais:
 
 lista_var_formais:
    VAR {empilha("REF", &pilha_tipos);} lista_idents_formais DOIS_PONTOS IDENT
+{
+   if (strcmp(token, "integer") == 0)
+      atualizaTipoParam(&tabela, INT, num_vars_tipo);
+   else if (strcmp(token, "boolean") == 0)
+      atualizaTipoParam(&tabela, BOOL, num_vars_tipo);
+   else
+      imprimeErro("Tipo de variavel não aceito.");
+
+   num_vars_tipo = 0;
+   desempilha(&pilha_tipos);
+}
+
    | {empilha("VALOR", &pilha_tipos);} lista_idents_formais DOIS_PONTOS IDENT
 {
    if (strcmp(token, "integer") == 0)
@@ -415,17 +476,81 @@ lista_idents_formais:
 }
 ;
 
+chamada_procedimento:
+{
+   tipoOP = PROC;
+   ivar = 0;
+   quant_fator = 0;
+   char *ident = desempilha(&pilha_simbolos);
+   simbolo_t simb = buscaSimbolo(tabela, ident);   
+   procedimento = simb.proc;
+}
+   chamada_parametros
+{
+   char comando[100];
+   sprintf(comando, "CHPR %s,%d", procedimento.rotulo, nivel_lexico);
+   geraCodigo (NULL, comando);
+}
+;
+
+chamada_parametros:
+   ABRE_PARENTESES lista_espressoes FECHA_PARENTESES
+   |
+;
+
+lista_espressoes:
+   espressoes
+;
+
+espressoes:
+   espressoes VIRGULA expressao 
+{
+   char *tipo = desempilha(&pilha_tipos);
+   if (procedimento.passagem_param[ivar] == REFERENCIA) {
+      if (tipo_fator != F_IDENT || quant_fator > 1)
+         imprimeErro ("Parametro invalido.");
+   }
+
+   int tipoExp;
+   if (strcmp(tipo, "INT") == 0)
+      tipoExp = INT;
+   else if (strcmp(tipo, "BOOL") == 0)
+      tipoExp = BOOL;
+
+   if (tipoExp != procedimento.tipo_param[ivar])
+      imprimeErro("Parametro invalido.");
+
+   quant_fator = 0;
+   ivar++;
+}
+   | expressao
+{
+   char *tipo = desempilha(&pilha_tipos);
+   if (procedimento.passagem_param[ivar] == REFERENCIA) {
+      if (tipo_fator != F_IDENT || quant_fator > 1)
+         imprimeErro ("Parametro invalido.");
+   }
+
+   int tipoExp;
+   if (strcmp(tipo, "INT") == 0)
+      tipoExp = INT;
+   else if (strcmp(tipo, "BOOL") == 0)
+      tipoExp = BOOL;
+
+   if (tipoExp != procedimento.tipo_param[ivar])
+      imprimeErro("Parametro invalido.");
+
+   quant_fator = 0;
+   ivar++;
+}
+;
 
 
 /*-----------------------------------------------------------------------*
 * Atribuição
 *------------------------------------------------------------------------*/
 atribuicao:
-   IDENT
-{
-   empilha(token, &pilha_simbolos);
-}
-   ATRIBUICAO expressao
+   ATRIBUICAO {tipoOP = PADRAO;} expressao
 {
    char comando[100];
 
@@ -477,12 +602,9 @@ expressao_simples:
    expressao_simples SOMA termo { validaTipos(&pilha_tipos, tabela, INT); geraCodigo(NULL, "SOMA"); empilha("INT", &pilha_tipos); }
    | expressao_simples SUBT termo { validaTipos(&pilha_tipos, tabela, INT); geraCodigo(NULL, "SUBT"); empilha("INT", &pilha_tipos); }
    | expressao_simples OR termo { validaTipos(&pilha_tipos, tabela, BOOL); geraCodigo(NULL, "DISJ"); empilha("BOOL", &pilha_tipos); }
-   | SUBT termo {
-      geraCodigo(NULL, "INVR");
-   }
-   | SOMA termo
    | termo
 ;
+
 
 termo:
    fator
@@ -492,30 +614,16 @@ termo:
 ;
 
 fator:
-   NUM
-{
-   char comando[100];
-   sprintf(comando, "CRCT %s", token);
-   geraCodigo(NULL, comando);
-
-   empilha("INT", &pilha_tipos);
-}
-   | IDENT
-{
-   char comando[100];
-   simbolo_t var = buscaSimbolo(tabela, token);
-
-   sprintf(comando, "CRVL %d,%d", var.var.nivel, var.var.deslocamento);
-   geraCodigo(NULL, comando);
-
-   if (var.var.tipo == INT)
-      empilha("INT", &pilha_tipos);
-   else
-      empilha("BOOL", &pilha_tipos);
-}
+   NUM          {empilhaNUM(token, &pilha_tipos); quant_fator++; tipo_fator = F_NUM;}
+   | SUBT NUM   {empilhaNUM(token, &pilha_tipos); geraCodigo(NULL, "INVR"); quant_fator++; tipo_fator = F_NUM;}
+   | SOMA NUM   {empilhaNUM(token, &pilha_tipos); quant_fator++; tipo_fator = F_NUM;}
+   | IDENT      {empilhaIDENT(token, ivar, ++quant_fator, tipoOP, procedimento, &pilha_tipos, tabela); tipo_fator = F_IDENT;}
+   | SUBT IDENT {empilhaIDENT(token, ivar, ++quant_fator, tipoOP, procedimento, &pilha_tipos, tabela); geraCodigo(NULL, "INVR"); tipo_fator = F_IDENT;}
+   | SOMA IDENT {empilhaIDENT(token, ivar, ++quant_fator, tipoOP, procedimento, &pilha_tipos, tabela); tipo_fator = F_IDENT;}
    | ABRE_PARENTESES expressao FECHA_PARENTESES
    | NOT fator
 {
+   quant_fator++;
    char *fator = desempilha(&pilha_tipos);
 
    if (strcmp(fator, "BOOL") != 0)
@@ -525,7 +633,7 @@ fator:
 
    empilha("BOOL", &pilha_tipos);
 }
-   | true_false
+   | true_false {tipo_fator = F_BOOL;}
 ;
 
 true_false:

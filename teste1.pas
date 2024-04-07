@@ -1,16 +1,19 @@
-program teste (input, output);
-var n, k: integer;
-    f1, f2, f3:boolean;
-
-    procedure p(var a, x: boolean; var b: boolean);
+program passRef(input, output);
+    var k: integer;
+    procedure p( n:integer; var g:integer);
+    var h:integer;
     begin
-        write(1);
-    end;
-
-    procedure p2(var a: boolean);
-    begin
-        write(3);
+        if (n<2)
+            then g:=g+1
+        else
+        begin
+            p(n-1,h);
+            g:=h;
+            p(n-2,g)
+        end;
+        write(n,g)
     end;
 begin
+    k:=0;
+    p(3,k);
 end.
-

@@ -45,7 +45,7 @@ void imprime (tabela_simbolos_t ts) {
         switch (ts.itens[i].tipo) {
             case VARIAVEL: printf ("%s VARIAVEL Tipo:%d Nivel:%d Deslocamento:%d\n", ts.itens[i].var.nome, ts.itens[i].var.tipo, ts.itens[i].var.nivel, ts.itens[i].var.deslocamento);break;
             case PARAMETRO_FORMAL: printf ("%s PARAMETRO_FORMAL Tipo:%d Nivel:%d Deslocamento:%d Passagem:%d\n", ts.itens[i].param.nome, ts.itens[i].param.tipo, ts.itens[i].param.nivel, ts.itens[i].param.deslocamento, ts.itens[i].param.passagem);break;
-            case PROCEDIMENTO: printf ("%s PROCEDIMENTO Param:%d\n", ts.itens[i].proc.nome, ts.itens[i].proc.num_param);break;
+            case PROCEDIMENTO: printf ("%s PROCEDIMENTO Rot:%s Param:%d\n", ts.itens[i].proc.nome, ts.itens[i].proc.rotulo, ts.itens[i].proc.num_param);break;
             case FUNCAO: printf ("%s FUNCAO\n", ts.itens[i].func.nome);break;
         }
     }
@@ -122,10 +122,6 @@ void atualizaDeslocamentoParam (tabela_simbolos_t *ts, int nivel, int quant) {
         quant--;
         deslocamento--;
     }
-
-    printf ("\nTESTE\n");
-    for (int i = 0; i < ts->itens[iProc].proc.num_param; i++)
-        printf ("%d %d\n", ts->itens[iProc].proc.tipo_param[i], ts->itens[iProc].proc.tipo_param[i]);
 }
 
 int quantVariaveis (tabela_simbolos_t ts, int nivel) {
@@ -138,15 +134,15 @@ int quantVariaveis (tabela_simbolos_t ts, int nivel) {
 }
 
 simbolo_t buscaSimbolo (tabela_simbolos_t tabela, char* nome) {
-  simbolo_t var = busca (tabela, nome);
+  simbolo_t simbolo = busca (tabela, nome);
   char comando[100];
 
-  if (var.tipo == -1) {
+  if (simbolo.tipo == -1) {
       sprintf(comando, "Variavel %s não encontrada.", nome);
       imprimeErro (comando);
   }
 
-  return var;
+  return simbolo;
 }
 
 void validaTipos (pilha_t* pilha, tabela_simbolos_t tabela, int tipo) {
@@ -168,6 +164,65 @@ void validaTipos (pilha_t* pilha, tabela_simbolos_t tabela, int tipo) {
     
     if ((t1 != tipo) || (t1 != t2))
         imprimeErro ("Operação invalida.");
+
+    return;
+}
+
+void empilhaNUM(char *token, pilha_t *pilha) {
+    char comando[100];
+
+    sprintf(comando, "CRCT %s", token);
+    geraCodigo(NULL, comando);
+    empilha("INT", pilha);
+
+    return;
+}
+
+void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, procedimento_t proc, pilha_t *pilha, tabela_simbolos_t tabela) {
+    char comando[100];
+    simbolo_t simbolo = buscaSimbolo(tabela, token);
+
+    if (tipoOP == PROC) {
+        if (ivar >= proc.num_param)
+            imprimeErro ("Parametro .");
+
+        if (proc.passagem_param[ivar] == REFERENCIA) {
+            if (quantFator > 1)
+                imprimeErro ("Parametro invalido.");
+
+
+            if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
+                sprintf(comando, "CRVL %d,%d", simbolo.var.nivel, simbolo.var.deslocamento);
+            }
+            else {
+                sprintf(comando, "CREN %d,%d", simbolo.var.nivel, simbolo.var.deslocamento);
+            }
+        }
+        else {
+            if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
+                sprintf(comando, "CRVI %d,%d", simbolo.var.nivel, simbolo.var.deslocamento);
+            }
+            else {
+                sprintf(comando, "CRVL %d,%d", simbolo.var.nivel, simbolo.var.deslocamento);
+            }
+        }
+
+        geraCodigo(NULL, comando);
+        if (simbolo.var.tipo == INT)
+            empilha("INT", pilha);
+        else
+            empilha("BOOL", pilha);
+
+        return;
+    }
+
+    sprintf(comando, "CRVL %d,%d", simbolo.var.nivel, simbolo.var.deslocamento);
+    geraCodigo(NULL, comando);
+
+    if (simbolo.var.tipo == INT)
+        empilha("INT", pilha);
+    else
+        empilha("BOOL", pilha);
 
     return;
 }

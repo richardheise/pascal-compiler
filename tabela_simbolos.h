@@ -6,6 +6,8 @@
 
 enum tipo_variavel { INT, BOOL };
 enum tipo_passagem { VALOR, REFERENCIA };
+enum tipo_operacao { PADRAO, PROC };
+enum tipo_fator { F_NUM, F_IDENT, F_BOOL};
 
 typedef struct {
    char nome[TAM_TOKEN];
@@ -87,3 +89,6 @@ int quantVariaveis (tabela_simbolos_t ts, int nivel);
 simbolo_t buscaSimbolo (tabela_simbolos_t tabela, char* nome);
 
 void validaTipos (pilha_t* pilha, tabela_simbolos_t tabela, int tipo);
+
+void empilhaNUM(char *token, pilha_t *pilha);
+void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, procedimento_t proc, pilha_t *pilha, tabela_simbolos_t tabela);
