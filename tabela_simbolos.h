@@ -10,23 +10,17 @@ enum tipo_operacao { PADRAO, PROC };
 enum tipo_fator { F_NUM, F_IDENT, F_BOOL};
 
 typedef struct {
-   char nome[TAM_TOKEN];
-   int nivel;
    int deslocamento;
    int tipo;
 } variavel_t;
 
 typedef struct {
-   char nome[TAM_TOKEN];
-   int nivel;
    int deslocamento;
    int tipo;
    int passagem;
 } parametro_formal_t;
 
 typedef struct {
-   char nome[TAM_TOKEN];
-   int nivel;
    char rotulo[TAM_TOKEN];
    int num_param;
    int tipo_param[MAX_PARAM];
@@ -34,8 +28,6 @@ typedef struct {
 } procedimento_t;
 
 typedef struct {
-   char nome[TAM_TOKEN];
-   int nivel;
    int tipo_retorno;
    char rotulo[TAM_TOKEN];
    int num_param;
@@ -45,6 +37,8 @@ typedef struct {
 
 
 typedef struct {
+   char nome[TAM_TOKEN];
+   int nivel;
    union {
       variavel_t var;
       parametro_formal_t param;
@@ -85,6 +79,8 @@ void atualizaTipoParam (tabela_simbolos_t *ts, int tipo, int quant);
 void atualizaDeslocamentoParam (tabela_simbolos_t *ts, int nivel, int quant);
 
 int quantVariaveis (tabela_simbolos_t ts, int nivel);
+
+int quantSubRotinas (tabela_simbolos_t ts, int nivel);
 
 simbolo_t buscaSimbolo (tabela_simbolos_t ts, char* nome);
 

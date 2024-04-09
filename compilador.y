@@ -77,7 +77,7 @@ definicoes_bloco:
 ;
 
 parte_declara_rotulos:
-   LABEL labels
+   LABEL labels PONTO_E_VIRGULA
    |
 ;
 
@@ -87,7 +87,7 @@ labels:
 ;
 
 parte_define_tipos:
-   TYPE types
+   TYPE types PONTO_E_VIRGULA
    |
 ;
 
@@ -102,6 +102,7 @@ definicao_tipo:
 
 parte_declara_sub_rotinas:
 {
+   nivel_lexico++;
    char rotulo[50];
    sprintf(rotulo, "R%02d", num_rotulos++);
    empilha(rotulo, &pilha_simbolos);
@@ -114,6 +115,7 @@ parte_declara_sub_rotinas:
 {
    char *rotulo = desempilha(&pilha_simbolos);
    geraCodigo(rotulo, "NADA");
+   nivel_lexico--;
 }
    |
 ;
@@ -133,8 +135,13 @@ declara_sub_rotina:
       geraCodigo(NULL, comando);
    }
 
-   sprintf(comando, "RTPR %d,%d", nivel_lexico, num_vars);
+   char *p = desempilha(&pilha_simbolos);
+   simbolo_t s = buscaSimbolo(tabela, p);
+   int sub_rotinas = quantSubRotinas(tabela, nivel_lexico);
+
+   sprintf(comando, "RTPR %d,%d", nivel_lexico, s.proc.num_param);
    geraCodigo(NULL, comando);
+   retira(&tabela, s.proc.num_param + n_vars + sub_rotinas);
 }
    | declaracao_function
 ;
@@ -330,7 +337,7 @@ termo_read:
    char comando[100];
    simbolo_t var = buscaSimbolo(tabela, token);
 
-   sprintf(comando, "ARMZ %d,%d", var.var.nivel, var.var.deslocamento);
+   sprintf(comando, "ARMZ %d,%d", var.nivel, var.var.deslocamento);
    geraCodigo(NULL, comando);
 }
 ;
@@ -357,21 +364,30 @@ termo_write:
 {
    char comando[100];
 
-   simbolo_t var = buscaSimbolo(tabela, token);
-
-   sprintf(comando, "CRVL %d,%d", var.var.nivel, var.var.deslocamento);
+   simbolo_t simbolo = buscaSimbolo(tabela, token);
+   if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
+      sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+   }
+   else {
+      sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+   }
    geraCodigo(NULL, comando);
    geraCodigo(NULL, "IMPR");
 }
    | NOT IDENT
 {
    char comando[100];
-   simbolo_t var = buscaSimbolo(tabela, token);
+   simbolo_t simbolo = buscaSimbolo(tabela, token);
 
-   if (var.var.tipo != BOOL)
+   if (simbolo.var.tipo != BOOL)
       imprimeErro("Operação invalida.");
 
-   sprintf(comando, "CRVL %d,%d", var.var.nivel, var.var.deslocamento);
+   if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
+      sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+   }
+   else {
+      sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+   }
 
    geraCodigo(NULL, comando);
    geraCodigo(NULL, "NEGA");
@@ -382,7 +398,6 @@ termo_write:
 declaracao_procedure:
    PROCEDURE IDENT
 {
-   nivel_lexico++;
    deslocamento = 0;
    num_vars = 0;
    num_vars_tipo = 0;
@@ -395,6 +410,8 @@ declaracao_procedure:
    char comando[100];
    sprintf(comando, "ENPR %d", nivel_lexico);
    geraCodigo(rotulo, comando);
+
+   empilha (token, &pilha_simbolos);
 }
    parametros_formais PONTO_E_VIRGULA bloco
 ;
@@ -579,10 +596,10 @@ atribuicao:
       imprimeErro("Atribuição inválida.");
 
    if (var.tipo == PARAMETRO_FORMAL && var.param.passagem == REFERENCIA) {
-      sprintf(comando, "ARMI %d,%d", var.var.nivel, var.var.deslocamento);
+      sprintf(comando, "ARMI %d,%d", var.nivel, var.var.deslocamento);
    }
    else {
-      sprintf(comando, "ARMZ %d,%d", var.var.nivel, var.var.deslocamento);
+      sprintf(comando, "ARMZ %d,%d", var.nivel, var.var.deslocamento);
    }
    geraCodigo(NULL, comando);
 }

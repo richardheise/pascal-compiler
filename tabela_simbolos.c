@@ -9,7 +9,14 @@ void inicializa_tabela (tabela_simbolos_t *ts) {
 
 void insere (tabela_simbolos_t *ts, simbolo_t s) {
     if ((ts->topo + 1) == MAX_TABELA)
-        return;
+        imprimeErro("Tamanho maximo da tabela de simbolos atingido.");
+
+    simbolo_t aux = busca (*ts, s.nome);
+    if (aux.tipo != -1) {
+        char erro[100];
+        sprintf(erro, "Nome %s ja existe.", s.nome);
+        imprimeErro(erro);
+    }
 
     ts->topo = ts->topo + 1;
     ts->itens[ts->topo] = s;
@@ -31,7 +38,7 @@ simbolo_t busca (tabela_simbolos_t ts, char* nome) {
     strncpy(aux, nome, TAM_TOKEN);
     
     for (int i = ts.topo; i >= 0; i--) {
-        if (strcmp(aux, ts.itens[i].var.nome) == 0)
+        if (strcmp(aux, ts.itens[i].nome) == 0)
             return ts.itens[i];
     }
 
@@ -43,10 +50,10 @@ simbolo_t busca (tabela_simbolos_t ts, char* nome) {
 void imprime (tabela_simbolos_t ts) {
     for (int i = 0; i <= ts.topo; i++) {
         switch (ts.itens[i].tipo) {
-            case VARIAVEL: printf ("%s VARIAVEL Tipo:%d Nivel:%d Deslocamento:%d\n", ts.itens[i].var.nome, ts.itens[i].var.tipo, ts.itens[i].var.nivel, ts.itens[i].var.deslocamento);break;
-            case PARAMETRO_FORMAL: printf ("%s PARAMETRO_FORMAL Tipo:%d Nivel:%d Deslocamento:%d Passagem:%d\n", ts.itens[i].param.nome, ts.itens[i].param.tipo, ts.itens[i].param.nivel, ts.itens[i].param.deslocamento, ts.itens[i].param.passagem);break;
-            case PROCEDIMENTO: printf ("%s PROCEDIMENTO Rot:%s Param:%d\n", ts.itens[i].proc.nome, ts.itens[i].proc.rotulo, ts.itens[i].proc.num_param);break;
-            case FUNCAO: printf ("%s FUNCAO\n", ts.itens[i].func.nome);break;
+            case VARIAVEL: printf ("%s VARIAVEL Tipo:%d Nivel:%d Deslocamento:%d\n", ts.itens[i].nome, ts.itens[i].var.tipo, ts.itens[i].nivel, ts.itens[i].var.deslocamento);break;
+            case PARAMETRO_FORMAL: printf ("%s PARAMETRO_FORMAL Tipo:%d Nivel:%d Deslocamento:%d Passagem:%d\n", ts.itens[i].nome, ts.itens[i].param.tipo, ts.itens[i].nivel, ts.itens[i].param.deslocamento, ts.itens[i].param.passagem);break;
+            case PROCEDIMENTO: printf ("%s PROCEDIMENTO Nivel:%d Rot:%s Param:%d\n", ts.itens[i].nome, ts.itens[i].nivel, ts.itens[i].proc.rotulo, ts.itens[i].proc.num_param);break;
+            case FUNCAO: printf ("%s FUNCAO Nivel:%d\n", ts.itens[i].nome, ts.itens[i].nivel);break;
         }
     }
 
@@ -57,8 +64,8 @@ void insereVarTabela (tabela_simbolos_t *ts, char* token, int nivel, int desloca
     variavel_t v;
     simbolo_t s;
 
-    strncpy(v.nome, token, TAM_TOKEN);
-    v.nivel = nivel;
+    strncpy(s.nome, token, TAM_TOKEN);
+    s.nivel = nivel;
     v.deslocamento = deslocamento;
     
     s.tipo = VARIAVEL;
@@ -70,9 +77,9 @@ void insereProcTabela (tabela_simbolos_t *ts, char* token, char* rotulo, int niv
     procedimento_t p;
     simbolo_t s;
 
-    strncpy(p.nome, token, TAM_TOKEN);
+    strncpy(s.nome, token, TAM_TOKEN);
     strncpy(p.rotulo, rotulo, TAM_TOKEN);
-    p.nivel = nivel;
+    s.nivel = nivel;
     p.num_param = 0;
     
     s.tipo = PROCEDIMENTO;
@@ -84,8 +91,8 @@ void insereParamTabela (tabela_simbolos_t *ts, char* token, int nivel, int passa
     parametro_formal_t pf;
     simbolo_t s;
 
-    strncpy(pf.nome, token, TAM_TOKEN);
-    pf.nivel = nivel;
+    strncpy(s.nome, token, TAM_TOKEN);
+    s.nivel = nivel;
     pf.passagem = passagem;
     
     s.tipo = PARAMETRO_FORMAL;
@@ -126,11 +133,25 @@ void atualizaDeslocamentoParam (tabela_simbolos_t *ts, int nivel, int quant) {
 
 int quantVariaveis (tabela_simbolos_t ts, int nivel) {
     for (int i = ts.topo; i >= 0; i--) {
-        if ((ts.itens[i].tipo == VARIAVEL) && (ts.itens[i].var.nivel == nivel))
+        if ((ts.itens[i].tipo == VARIAVEL) && (ts.itens[i].nivel == nivel))
             return ts.itens[i].var.deslocamento + 1;
     }
 
     return 0;
+}
+
+int quantSubRotinas(tabela_simbolos_t ts, int nivel) {
+    int cont = 0;
+    
+    for (int i = ts.topo; i >= 0; i--) {
+        if (ts.itens[i].nivel <= nivel)
+            return cont;
+        
+        if (((ts.itens[i].tipo == PROCEDIMENTO) || (ts.itens[i].tipo == FUNCAO)) && (ts.itens[i].nivel == nivel + 1))
+            cont++;
+    }
+
+    return cont;
 }
 
 simbolo_t buscaSimbolo (tabela_simbolos_t ts, char* nome) {
@@ -192,18 +213,18 @@ void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, procediment
 
 
             if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
-                sprintf(comando, "CRVL %d,%d", simbolo.var.nivel, simbolo.var.deslocamento);
+                sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.var.deslocamento);
             }
             else {
-                sprintf(comando, "CREN %d,%d", simbolo.var.nivel, simbolo.var.deslocamento);
+                sprintf(comando, "CREN %d,%d", simbolo.nivel, simbolo.var.deslocamento);
             }
         }
         else {
             if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
-                sprintf(comando, "CRVI %d,%d", simbolo.var.nivel, simbolo.var.deslocamento);
+                sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.var.deslocamento);
             }
             else {
-                sprintf(comando, "CRVL %d,%d", simbolo.var.nivel, simbolo.var.deslocamento);
+                sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.var.deslocamento);
             }
         }
 
@@ -216,7 +237,12 @@ void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, procediment
         return;
     }
 
-    sprintf(comando, "CRVL %d,%d", simbolo.var.nivel, simbolo.var.deslocamento);
+    if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
+        sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+    }
+    else {
+        sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+    }
     geraCodigo(NULL, comando);
 
     if (simbolo.var.tipo == INT)
