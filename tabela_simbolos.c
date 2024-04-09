@@ -205,11 +205,11 @@ void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, procediment
 
     if (tipoOP == PROC) {
         if (ivar >= proc.num_param)
-            imprimeErro ("Parametro .");
+            imprimeErro ("Quantidade de parâmetros inválido.");
 
         if (proc.passagem_param[ivar] == REFERENCIA) {
             if (quantFator > 1)
-                imprimeErro ("Parametro invalido.");
+                imprimeErro ("Parametro invalido, passagem de mais de um parametro por referencia.");
 
 
             if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
