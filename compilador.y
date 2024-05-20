@@ -20,7 +20,7 @@ int tipoOP = 0;
 int num_ident;
 int quant_fator = 0;
 int tipo_fator;
-procedimento_t procedimento;
+sub_rotina_t sub_rotina;
 
 tabela_simbolos_t tabela;
 pilha_t pilha_tipos;
@@ -139,11 +139,27 @@ declara_sub_rotina:
    simbolo_t s = buscaSimbolo(tabela, p);
    int sub_rotinas = quantSubRotinas(tabela, nivel_lexico);
 
-   sprintf(comando, "RTPR %d,%d", nivel_lexico, s.proc.num_param);
+   sprintf(comando, "RTPR %d,%d", nivel_lexico, s.sub_rot.num_param);
    geraCodigo(NULL, comando);
-   retira(&tabela, s.proc.num_param + n_vars + sub_rotinas);
+   retira(&tabela, s.sub_rot.num_param + n_vars + sub_rotinas);
 }
    | declaracao_function
+{
+   char comando[100];
+   int n_vars = quantVariaveis(tabela, nivel_lexico);
+   if (n_vars > 0) {
+      sprintf(comando, "DMEM %d", n_vars);
+      geraCodigo(NULL, comando);
+   }
+
+   char *f = desempilha(&pilha_simbolos);
+   simbolo_t s = buscaSimbolo(tabela, f);
+   int sub_rotinas = quantSubRotinas(tabela, nivel_lexico);
+
+   sprintf(comando, "RTPR %d,%d", nivel_lexico, s.sub_rot.num_param);
+   geraCodigo(NULL, comando);
+   retira(&tabela, s.sub_rot.num_param + n_vars + sub_rotinas);
+}
 ;
 
 
@@ -240,7 +256,7 @@ comando_com_ident:
 
 atr_proc:
    atribuicao
-   | chamada_procedimento
+   | chamada_sub_rotina
 ;
 
 comando_repetitivo:
@@ -337,7 +353,7 @@ termo_read:
    char comando[100];
    simbolo_t var = buscaSimbolo(tabela, token);
 
-   sprintf(comando, "ARMZ %d,%d", var.nivel, var.var.deslocamento);
+   sprintf(comando, "ARMZ %d,%d", var.nivel, var.deslocamento);
    geraCodigo(NULL, comando);
 }
 ;
@@ -360,39 +376,58 @@ termo_write:
    geraCodigo(NULL, comando);
    geraCodigo(NULL, "IMPR");
 }
-   | IDENT
-{
-   char comando[100];
-
-   simbolo_t simbolo = buscaSimbolo(tabela, token);
-   if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
-      sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.var.deslocamento);
-   }
-   else {
-      sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.var.deslocamento);
-   }
-   geraCodigo(NULL, comando);
-   geraCodigo(NULL, "IMPR");
-}
+   | ident_func {geraCodigo(NULL, "IMPR");}
    | NOT IDENT
 {
    char comando[100];
    simbolo_t simbolo = buscaSimbolo(tabela, token);
 
-   if (simbolo.var.tipo != BOOL)
+   if (simbolo.tipo != BOOL)
       imprimeErro("Operação invalida.");
 
-   if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
-      sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+   if (simbolo.tipo_simbolo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
+      sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.deslocamento);
    }
    else {
-      sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+      sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.deslocamento);
    }
 
    geraCodigo(NULL, comando);
    geraCodigo(NULL, "NEGA");
    geraCodigo(NULL, "IMPR");
 }
+;
+
+ident_func:
+   IDENT
+{
+   char comando[100];
+
+   simbolo_t simbolo = buscaSimbolo(tabela, token);
+
+   if (simbolo.tipo_simbolo == VARIAVEL || simbolo.tipo_simbolo == PARAMETRO_FORMAL) {
+      if (simbolo.tipo_simbolo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
+         sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.deslocamento);
+      }
+      else {
+         sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.deslocamento);
+      }
+
+      geraCodigo(NULL, comando);
+   }
+   else if (simbolo.tipo_simbolo == FUNCAO) {
+      empilha(token, &pilha_simbolos);
+   }
+   else
+      imprimeErro ("Operação inválida.");
+
+}
+   func_write
+;
+
+func_write:
+   chamada_sub_rotina
+   |
 ;
 
 declaracao_procedure:
@@ -405,7 +440,7 @@ declaracao_procedure:
    char rotulo[50];
    sprintf(rotulo, "R%02d", num_rotulos++);
 
-   insereProcTabela(&tabela, token, rotulo, nivel_lexico);
+   insereRotinaTabela(&tabela, token, rotulo, nivel_lexico, PROCEDIMENTO);
 
    char comando[100];
    sprintf(comando, "ENPR %d", nivel_lexico);
@@ -418,7 +453,32 @@ declaracao_procedure:
 
 declaracao_function:
    FUNCTION IDENT 
-   parametros_formais DOIS_PONTOS IDENT PONTO_E_VIRGULA bloco
+{
+   deslocamento = 0;
+   num_vars = 0;
+   num_vars_tipo = 0;
+   
+   char rotulo[50];
+   sprintf(rotulo, "R%02d", num_rotulos++);
+
+   insereRotinaTabela(&tabela, token, rotulo, nivel_lexico, FUNCAO);
+
+   char comando[100];
+   sprintf(comando, "ENPR %d", nivel_lexico);
+   geraCodigo(rotulo, comando);
+
+   empilha (token, &pilha_simbolos);
+}
+   parametros_formais DOIS_PONTOS IDENT
+{
+   if (strcmp(token, "integer") == 0)
+      atualizaFunc(&tabela, INT, num_vars);
+   else if (strcmp(token, "boolean") == 0)
+      atualizaFunc(&tabela, BOOL, num_vars);
+   else
+      imprimeErro("Tipo de variavel não aceito.");
+}
+   PONTO_E_VIRGULA bloco
 ;
 
 parametros_formais:
@@ -499,29 +559,32 @@ lista_idents_formais:
 }
 ;
 
-chamada_procedimento:
+chamada_sub_rotina:
 {
-   tipoOP = PROC;
+   tipoOP = SUB_ROT;
    ivar = 0;
    quant_fator = 0;
    char *ident = desempilha(&pilha_simbolos);
    simbolo_t simb = buscaSimbolo(tabela, ident);   
-   procedimento = simb.proc;
+   sub_rotina = simb.sub_rot;
+
+   if (simb.tipo_simbolo == FUNCAO) {
+      geraCodigo (NULL, "AMEM 1");
+   }
 }
    chamada_parametros
 {
-   if (ivar != procedimento.num_param)
+   if (ivar != sub_rotina.num_param)
       imprimeErro ("Parametros invalidos.");
 
    char comando[100];
-   sprintf(comando, "CHPR %s,%d", procedimento.rotulo, nivel_lexico);
+   sprintf(comando, "CHPR %s,%d", sub_rotina.rotulo, nivel_lexico);
    geraCodigo (NULL, comando);
 }
 ;
 
 chamada_parametros:
    ABRE_PARENTESES lista_espressoes FECHA_PARENTESES
-   |
 ;
 
 lista_espressoes:
@@ -533,7 +596,7 @@ espressoes:
    espressoes VIRGULA expressao 
 {
    char *tipo = desempilha(&pilha_tipos);
-   if (procedimento.passagem_param[ivar] == REFERENCIA) {
+   if (sub_rotina.passagem_param[ivar] == REFERENCIA) {
       if (tipo_fator != F_IDENT || quant_fator > 1)
          imprimeErro ("Parametro invalido.");
    }
@@ -544,7 +607,7 @@ espressoes:
    else if (strcmp(tipo, "BOOL") == 0)
       tipoExp = BOOL;
 
-   if (tipoExp != procedimento.tipo_param[ivar])
+   if (tipoExp != sub_rotina.tipo_param[ivar])
       imprimeErro("Parametro invalido.");
 
    quant_fator = 0;
@@ -553,7 +616,7 @@ espressoes:
    | expressao
 {
    char *tipo = desempilha(&pilha_tipos);
-   if (procedimento.passagem_param[ivar] == REFERENCIA) {
+   if (sub_rotina.passagem_param[ivar] == REFERENCIA) {
       if (tipo_fator != F_IDENT || quant_fator > 1)
          imprimeErro ("Parametro invalido.");
    }
@@ -564,7 +627,7 @@ espressoes:
    else if (strcmp(tipo, "BOOL") == 0)
       tipoExp = BOOL;
 
-   if (tipoExp != procedimento.tipo_param[ivar])
+   if (tipoExp != sub_rotina.tipo_param[ivar])
       imprimeErro("Parametro invalido.");
 
    quant_fator = 0;
@@ -577,7 +640,18 @@ espressoes:
 * Atribuição
 *------------------------------------------------------------------------*/
 atribuicao:
-   ATRIBUICAO {tipoOP = PADRAO;} expressao
+   ATRIBUICAO 
+{  
+   tipoOP = PADRAO;
+   char *destino = desempilha(&pilha_simbolos);
+   simbolo_t var = buscaSimbolo(tabela, destino);
+   if (var.tipo_simbolo == PROCEDIMENTO) {
+      imprimeErro("Operação não permitida (deveria ser uma função).");
+   }
+
+   empilha(destino, &pilha_simbolos);
+} 
+   expressao
 {
    char comando[100];
 
@@ -592,15 +666,22 @@ atribuicao:
    else if (strcmp(exp, "BOOL") == 0)
       tipoExp = BOOL;
 
-   if (var.var.tipo != tipoExp)
-      imprimeErro("Atribuição inválida.");
-
-   if (var.tipo == PARAMETRO_FORMAL && var.param.passagem == REFERENCIA) {
-      sprintf(comando, "ARMI %d,%d", var.nivel, var.var.deslocamento);
+   if (var.tipo_simbolo == FUNCAO) {
+      if (var.tipo != tipoExp)
+         imprimeErro("Atribuição inválida.");
    }
    else {
-      sprintf(comando, "ARMZ %d,%d", var.nivel, var.var.deslocamento);
+      if (var.tipo != tipoExp)
+         imprimeErro("Atribuição inválida.");
    }
+
+   if (var.tipo_simbolo == PARAMETRO_FORMAL && var.param.passagem == REFERENCIA) {
+      sprintf(comando, "ARMI %d,%d", var.nivel, var.deslocamento);
+   }
+   else {
+      sprintf(comando, "ARMZ %d,%d", var.nivel, var.deslocamento);
+   }
+
    geraCodigo(NULL, comando);
 }
 ;
@@ -649,9 +730,9 @@ fator:
    NUM          {empilhaNUM(token, &pilha_tipos); quant_fator++; tipo_fator = F_NUM;}
    | SUBT NUM   {empilhaNUM(token, &pilha_tipos); geraCodigo(NULL, "INVR"); quant_fator++; tipo_fator = F_NUM;}
    | SOMA NUM   {empilhaNUM(token, &pilha_tipos); quant_fator++; tipo_fator = F_NUM;}
-   | IDENT      {empilhaIDENT(token, ivar, ++quant_fator, tipoOP, procedimento, &pilha_tipos, tabela); tipo_fator = F_IDENT;}
-   | SUBT IDENT {empilhaIDENT(token, ivar, ++quant_fator, tipoOP, procedimento, &pilha_tipos, tabela); geraCodigo(NULL, "INVR"); tipo_fator = F_IDENT;}
-   | SOMA IDENT {empilhaIDENT(token, ivar, ++quant_fator, tipoOP, procedimento, &pilha_tipos, tabela); tipo_fator = F_IDENT;}
+   | funcao_expressao
+   | SUBT funcao_expressao {geraCodigo(NULL, "INVR");}
+   | SOMA funcao_expressao
    | ABRE_PARENTESES expressao FECHA_PARENTESES
    | NOT fator
 {
@@ -679,6 +760,34 @@ true_false:
    geraCodigo(NULL, "CRCT 0");
    empilha("BOOL", &pilha_tipos);
 }
+
+funcao_expressao:
+   IDENT 
+{
+   simbolo_t var = buscaSimbolo(tabela, token);
+   quant_fator++;
+
+   if (var.tipo_simbolo == FUNCAO) {
+      empilha(token, &pilha_simbolos);
+      empilhaFunc(var.tipo, &pilha_tipos);
+      tipo_fator = F_FUNC;
+   }
+   else if (var.tipo_simbolo == VARIAVEL || var.tipo_simbolo == PARAMETRO_FORMAL) {
+      empilhaIDENT(token, ivar, quant_fator, tipoOP, sub_rotina, &pilha_tipos, tabela);
+      tipo_fator = F_IDENT;
+   }
+   else 
+      imprimeErro ("Operação inválida");
+
+}
+   chamada_rot_exp
+;
+
+chamada_rot_exp:
+   chamada_sub_rotina
+   |
+;
+
 %%
 
 int main(int argc, char **argv)

@@ -4,19 +4,12 @@
 #include "pilha.h"
 #include "compilador.h"
 
-enum tipo_variavel { INT, BOOL };
+enum tipo_variavel { INT, BOOL, SEM_TIPO };
 enum tipo_passagem { VALOR, REFERENCIA };
-enum tipo_operacao { PADRAO, PROC };
-enum tipo_fator { F_NUM, F_IDENT, F_BOOL};
+enum tipo_operacao { PADRAO, SUB_ROT };
+enum tipo_fator { F_NUM, F_IDENT, F_BOOL, F_FUNC};
 
 typedef struct {
-   int deslocamento;
-   int tipo;
-} variavel_t;
-
-typedef struct {
-   int deslocamento;
-   int tipo;
    int passagem;
 } parametro_formal_t;
 
@@ -25,27 +18,18 @@ typedef struct {
    int num_param;
    int tipo_param[MAX_PARAM];
    int passagem_param[MAX_PARAM];
-} procedimento_t;
-
-typedef struct {
-   int tipo_retorno;
-   char rotulo[TAM_TOKEN];
-   int num_param;
-   int tipo_param[MAX_PARAM];
-   int passagem_param[MAX_PARAM];
-} funcao_t;
-
+} sub_rotina_t;
 
 typedef struct {
    char nome[TAM_TOKEN];
    int nivel;
+   int tipo;
+   int deslocamento;
    union {
-      variavel_t var;
       parametro_formal_t param;
-      procedimento_t proc;
-      funcao_t func;
+      sub_rotina_t sub_rot;
    };
-   enum tipo_simbolo { VARIAVEL, PARAMETRO_FORMAL, PROCEDIMENTO, FUNCAO } tipo;
+   enum tipo_simb { VARIAVEL, PARAMETRO_FORMAL, PROCEDIMENTO, FUNCAO } tipo_simbolo;
 } simbolo_t;
 
 
@@ -68,7 +52,7 @@ void imprime (tabela_simbolos_t ts);
 
 void insereVarTabela (tabela_simbolos_t *ts, char* token, int nivel, int deslocamento);
 
-void insereProcTabela (tabela_simbolos_t *ts, char* token, char* rotulo, int nivel);
+void insereRotinaTabela (tabela_simbolos_t *ts, char* token, char* rotulo, int nivel, int tipo_rotina);
 
 void insereParamTabela (tabela_simbolos_t *ts, char* token, int nivel, int passagem);
 
@@ -77,6 +61,8 @@ void atualizaTipoVar (tabela_simbolos_t *ts, int tipo, int quant);
 void atualizaTipoParam (tabela_simbolos_t *ts, int tipo, int quant);
 
 void atualizaDeslocamentoParam (tabela_simbolos_t *ts, int nivel, int quant);
+
+void atualizaFunc (tabela_simbolos_t *ts, int tipo, int num_vars);
 
 int quantVariaveis (tabela_simbolos_t ts, int nivel);
 
@@ -88,4 +74,6 @@ void validaTipos (pilha_t* pilha, int tipo);
 
 void empilhaNUM (char *token, pilha_t *pilha);
 
-void empilhaIDENT (char *token, int ivar, int quantFator, int tipoOP, procedimento_t proc, pilha_t *pilha, tabela_simbolos_t ts);
+void empilhaIDENT (char *token, int ivar, int quantFator, int tipoOP, sub_rotina_t proc, pilha_t *pilha, tabela_simbolos_t ts);
+
+void empilhaFunc (int tipo, pilha_t *pilha);

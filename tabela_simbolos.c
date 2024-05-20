@@ -49,11 +49,11 @@ simbolo_t busca (tabela_simbolos_t ts, char* nome) {
 
 void imprime (tabela_simbolos_t ts) {
     for (int i = 0; i <= ts.topo; i++) {
-        switch (ts.itens[i].tipo) {
-            case VARIAVEL: printf ("%s VARIAVEL Tipo:%d Nivel:%d Deslocamento:%d\n", ts.itens[i].nome, ts.itens[i].var.tipo, ts.itens[i].nivel, ts.itens[i].var.deslocamento);break;
-            case PARAMETRO_FORMAL: printf ("%s PARAMETRO_FORMAL Tipo:%d Nivel:%d Deslocamento:%d Passagem:%d\n", ts.itens[i].nome, ts.itens[i].param.tipo, ts.itens[i].nivel, ts.itens[i].param.deslocamento, ts.itens[i].param.passagem);break;
-            case PROCEDIMENTO: printf ("%s PROCEDIMENTO Nivel:%d Rot:%s Param:%d\n", ts.itens[i].nome, ts.itens[i].nivel, ts.itens[i].proc.rotulo, ts.itens[i].proc.num_param);break;
-            case FUNCAO: printf ("%s FUNCAO Nivel:%d\n", ts.itens[i].nome, ts.itens[i].nivel);break;
+        switch (ts.itens[i].tipo_simbolo) {
+            case VARIAVEL: printf ("%s VARIAVEL Tipo:%d Nivel:%d Deslocamento:%d\n", ts.itens[i].nome, ts.itens[i].tipo, ts.itens[i].nivel, ts.itens[i].deslocamento);break;
+            case PARAMETRO_FORMAL: printf ("%s PARAMETRO_FORMAL Tipo:%d Nivel:%d Deslocamento:%d Passagem:%d\n", ts.itens[i].nome, ts.itens[i].tipo, ts.itens[i].nivel, ts.itens[i].deslocamento, ts.itens[i].param.passagem);break;
+            case PROCEDIMENTO: printf ("%s PROCEDIMENTO Nivel:%d Rot:%s Param:%d\n", ts.itens[i].nome, ts.itens[i].nivel, ts.itens[i].sub_rot.rotulo, ts.itens[i].sub_rot.num_param);break;
+            case FUNCAO: printf ("%s FUNCAO Nivel:%d Rot:%s Param:%d Tipo:%d\n", ts.itens[i].nome, ts.itens[i].nivel, ts.itens[i].sub_rot.rotulo, ts.itens[i].sub_rot.num_param, ts.itens[i].tipo);break;
         }
     }
 
@@ -61,29 +61,34 @@ void imprime (tabela_simbolos_t ts) {
 }
 
 void insereVarTabela (tabela_simbolos_t *ts, char* token, int nivel, int deslocamento) {
-    variavel_t v;
     simbolo_t s;
 
     strncpy(s.nome, token, TAM_TOKEN);
     s.nivel = nivel;
-    v.deslocamento = deslocamento;
+    s.deslocamento = deslocamento;
     
-    s.tipo = VARIAVEL;
-    s.var = v;
+    s.tipo_simbolo = VARIAVEL;
     insere (ts, s);
 }
 
-void insereProcTabela (tabela_simbolos_t *ts, char* token, char* rotulo, int nivel) {
-    procedimento_t p;
+void insereRotinaTabela (tabela_simbolos_t *ts, char* token, char* rotulo, int nivel, int tipo_rotina) {
+    sub_rotina_t rotina;
     simbolo_t s;
 
     strncpy(s.nome, token, TAM_TOKEN);
-    strncpy(p.rotulo, rotulo, TAM_TOKEN);
+    strncpy(rotina.rotulo, rotulo, TAM_TOKEN);
     s.nivel = nivel;
-    p.num_param = 0;
+    rotina.num_param = 0;
+    s.tipo_simbolo = SEM_TIPO;
     
-    s.tipo = PROCEDIMENTO;
-    s.proc = p;
+    if (tipo_rotina == PROCEDIMENTO) {
+        s.tipo_simbolo = PROCEDIMENTO;
+    }
+    else {
+        s.tipo_simbolo = FUNCAO;
+    }
+
+    s.sub_rot = rotina;
     insere (ts, s);
 }
 
@@ -95,21 +100,21 @@ void insereParamTabela (tabela_simbolos_t *ts, char* token, int nivel, int passa
     s.nivel = nivel;
     pf.passagem = passagem;
     
-    s.tipo = PARAMETRO_FORMAL;
+    s.tipo_simbolo = PARAMETRO_FORMAL;
     s.param = pf;
     insere (ts, s);
 }
 
 void atualizaTipoVar (tabela_simbolos_t *ts, int tipo, int quant) {
     for (int i = ts->topo; quant > 0; i--) {
-        ts->itens[i].var.tipo = tipo;
+        ts->itens[i].tipo = tipo;
         quant--;
     }
 }
 
 void atualizaTipoParam (tabela_simbolos_t *ts, int tipo, int quant) {
     for (int i = ts->topo; quant > 0; i--) {
-        ts->itens[i].param.tipo = tipo;
+        ts->itens[i].tipo = tipo;
         quant--;
     }
 }
@@ -118,23 +123,29 @@ void atualizaDeslocamentoParam (tabela_simbolos_t *ts, int nivel, int quant) {
     int deslocamento = -4;
     int iProc;
     iProc = ts->topo - quant;
-    ts->itens[iProc].proc.num_param = quant;
+    ts->itens[iProc].sub_rot.num_param = quant;
 
     for (int i = ts->topo; quant > 0; i--) {
-        ts->itens[i].param.deslocamento = deslocamento;
+        ts->itens[i].deslocamento = deslocamento;
 
-        ts->itens[iProc].proc.tipo_param[quant - 1] = ts->itens[i].param.tipo;
-        ts->itens[iProc].proc.passagem_param[quant - 1] = ts->itens[i].param.passagem;
+        ts->itens[iProc].sub_rot.tipo_param[quant - 1] = ts->itens[i].tipo;
+        ts->itens[iProc].sub_rot.passagem_param[quant - 1] = ts->itens[i].param.passagem;
         
         quant--;
         deslocamento--;
     }
 }
 
+void atualizaFunc (tabela_simbolos_t *ts, int tipo, int num_vars) {
+    int iFunc = ts->topo - num_vars;
+    ts->itens[iFunc].tipo = tipo;
+    ts->itens[iFunc].deslocamento = -4 - num_vars;
+}
+
 int quantVariaveis (tabela_simbolos_t ts, int nivel) {
     for (int i = ts.topo; i >= 0; i--) {
-        if ((ts.itens[i].tipo == VARIAVEL) && (ts.itens[i].nivel == nivel))
-            return ts.itens[i].var.deslocamento + 1;
+        if ((ts.itens[i].tipo_simbolo == VARIAVEL) && (ts.itens[i].nivel == nivel))
+            return ts.itens[i].deslocamento + 1;
     }
 
     return 0;
@@ -147,7 +158,7 @@ int quantSubRotinas(tabela_simbolos_t ts, int nivel) {
         if (ts.itens[i].nivel <= nivel)
             return cont;
         
-        if (((ts.itens[i].tipo == PROCEDIMENTO) || (ts.itens[i].tipo == FUNCAO)) && (ts.itens[i].nivel == nivel + 1))
+        if (((ts.itens[i].tipo_simbolo == PROCEDIMENTO) || (ts.itens[i].tipo_simbolo == FUNCAO)) && (ts.itens[i].nivel == nivel + 1))
             cont++;
     }
 
@@ -199,11 +210,11 @@ void empilhaNUM(char *token, pilha_t *pilha) {
     return;
 }
 
-void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, procedimento_t proc, pilha_t *pilha, tabela_simbolos_t ts) {
+void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, sub_rotina_t proc, pilha_t *pilha, tabela_simbolos_t ts) {
     char comando[100];
     simbolo_t simbolo = buscaSimbolo(ts, token);
 
-    if (tipoOP == PROC) {
+    if (tipoOP == SUB_ROT) {
         if (ivar >= proc.num_param)
             imprimeErro ("Quantidade de parâmetros inválido.");
 
@@ -212,24 +223,24 @@ void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, procediment
                 imprimeErro ("Parametro invalido, passagem de mais de um parametro por referencia.");
 
 
-            if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
-                sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+            if (simbolo.tipo_simbolo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
+                sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.deslocamento);
             }
             else {
-                sprintf(comando, "CREN %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+                sprintf(comando, "CREN %d,%d", simbolo.nivel, simbolo.deslocamento);
             }
         }
         else {
-            if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
-                sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+            if (simbolo.tipo_simbolo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
+                sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.deslocamento);
             }
             else {
-                sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+                sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.deslocamento);
             }
         }
 
         geraCodigo(NULL, comando);
-        if (simbolo.var.tipo == INT)
+        if (simbolo.tipo == INT)
             empilha("INT", pilha);
         else
             empilha("BOOL", pilha);
@@ -238,17 +249,29 @@ void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, procediment
     }
 
     if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
-        sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+        sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.deslocamento);
     }
     else {
-        sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.var.deslocamento);
+        sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.deslocamento);
     }
     geraCodigo(NULL, comando);
 
-    if (simbolo.var.tipo == INT)
+    if (simbolo.tipo == INT)
         empilha("INT", pilha);
     else
         empilha("BOOL", pilha);
 
+    return;
+}
+
+void empilhaFunc (int tipo, pilha_t *pilha) {
+    if (tipo == SEM_TIPO)
+      imprimeErro ("Operação não permitida (deveria ser uma função).");
+
+    if (tipo == INT)
+        empilha("INT", pilha);
+    else
+        empilha("BOOL", pilha);
+    
     return;
 }
