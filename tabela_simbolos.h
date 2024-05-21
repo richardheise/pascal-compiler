@@ -30,7 +30,7 @@ typedef struct {
       parametro_formal_t param;
       sub_rotina_t sub_rot;
    };
-   enum tipo_simb { VARIAVEL, PARAMETRO_FORMAL, PROCEDIMENTO, FUNCAO } tipo_simbolo;
+   enum tipo_simb { VARIAVEL, PARAMETRO_FORMAL, PROCEDIMENTO, FUNCAO } forma;
 } simbolo_t;
 
 
@@ -71,10 +71,10 @@ int quantSubRotinas (tabela_simbolos_t ts, int nivel);
 
 simbolo_t buscaSimbolo (tabela_simbolos_t ts, char* nome);
 
-void validaTipos (pilha_t* pilha, int tipo);
+void validaTipos (pilha_int* pilha, int tipo);
 
-void empilhaNUM (char *token, pilha_t *pilha);
+void empilhaNUM (char *token, pilha_int *pilha);
 
-void empilhaIDENT (char *token, int ivar, int quantFator, int tipoOP, sub_rotina_t proc, pilha_t *pilha, tabela_simbolos_t ts);
+void empilhaIDENT (char *token, int ivar, int quantFator, int tipoOP, sub_rotina_t proc, pilha_int *pilha, tabela_simbolos_t ts);
 
-void empilhaFunc (int tipo, pilha_t *pilha);
+void empilhaFunc (int tipo, pilha_int *pilha);

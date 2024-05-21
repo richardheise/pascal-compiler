@@ -1,15 +1,12 @@
-program passRef (input, output);
-var x: integer;
-    procedure p(var y: integer; z: integer);
-    var h: integer;
+program dentro(input, output);
+    function f: integer;
+        procedure g;
+        begin
+            f := 3
+        end;
     begin
-        h := h + 1;
-    end;
-
-    function f() : integer;
-    begin
-        f:= 89;
+        g
     end;
 begin
-    write(f());
+    write(f)
 end.

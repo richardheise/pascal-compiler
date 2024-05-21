@@ -4,19 +4,19 @@
 #include "pilha_string.h"
 
  
-void inicializa_pilha_str (pilha_t *p) {
+void inicializa_pilha_str (pilha_str *p) {
     p->topo = -1;
     return;
 }
 
-int pilha_vazia_str (pilha_t p) {
+int pilha_vazia_str (pilha_str p) {
     if (p.topo == -1)
         return 1;
     
     return 0;
 }
 
-int empilha_str (char* x, pilha_t *p) {
+int empilha_str (char* x, pilha_str *p) {
     if (tamanho_pilha_str (*p) == MAX)
         return 0;
 
@@ -26,7 +26,7 @@ int empilha_str (char* x, pilha_t *p) {
     return 1;
 }
     
-char* desempilha_str (pilha_t *p) {
+char* desempilha_str (pilha_str *p) {
     if (pilha_vazia_str(*p))
         return 0;
 
@@ -36,11 +36,11 @@ char* desempilha_str (pilha_t *p) {
     return aux;
 }
 
-int tamanho_pilha_str(pilha_t p) {
+int tamanho_pilha_str(pilha_str p) {
     return p.topo + 1;
 }
 
-void imprime_pilha_str (pilha_t *p) {
+void imprime_pilha_str (pilha_str *p) {
     for (int i = 0; i <= p->topo; i++)
         printf ("%s\n", p->itens[i]);
 }
