@@ -178,8 +178,8 @@ simbolo_t buscaSimbolo (tabela_simbolos_t ts, char* nome) {
 }
 
 void validaTipos (pilha_t* pilha, int tipo) {
-    char *v1 = desempilha (pilha);
-    char *v2 = desempilha (pilha);
+    char *v1 = desempilha_str (pilha);
+    char *v2 = desempilha_str (pilha);
 
     int t1;
     int t2;
@@ -205,7 +205,7 @@ void empilhaNUM(char *token, pilha_t *pilha) {
 
     sprintf(comando, "CRCT %s", token);
     geraCodigo(NULL, comando);
-    empilha("INT", pilha);
+    empilha_str("INT", pilha);
 
     return;
 }
@@ -241,9 +241,9 @@ void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, sub_rotina_
 
         geraCodigo(NULL, comando);
         if (simbolo.tipo == INT)
-            empilha("INT", pilha);
+            empilha_str("INT", pilha);
         else
-            empilha("BOOL", pilha);
+            empilha_str("BOOL", pilha);
 
         return;
     }
@@ -257,9 +257,9 @@ void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, sub_rotina_
     geraCodigo(NULL, comando);
 
     if (simbolo.tipo == INT)
-        empilha("INT", pilha);
+        empilha_str("INT", pilha);
     else
-        empilha("BOOL", pilha);
+        empilha_str("BOOL", pilha);
 
     return;
 }
@@ -269,9 +269,9 @@ void empilhaFunc (int tipo, pilha_t *pilha) {
       imprimeErro ("Operação não permitida (deveria ser uma função).");
 
     if (tipo == INT)
-        empilha("INT", pilha);
+        empilha_str("INT", pilha);
     else
-        empilha("BOOL", pilha);
+        empilha_str("BOOL", pilha);
     
     return;
 }

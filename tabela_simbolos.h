@@ -1,7 +1,8 @@
 #define MAX_TABELA 1500
 #define MAX_PARAM 20
 #define TAM_TOKEN 16
-#include "pilha.h"
+#include "pilha_string.h"
+#include "pilha_int.h"
 #include "compilador.h"
 
 enum tipo_variavel { INT, BOOL, SEM_TIPO };

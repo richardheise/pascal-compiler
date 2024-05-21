@@ -105,7 +105,7 @@ parte_declara_sub_rotinas:
    nivel_lexico++;
    char rotulo[50];
    sprintf(rotulo, "R%02d", num_rotulos++);
-   empilha(rotulo, &pilha_simbolos);
+   empilha_str(rotulo, &pilha_simbolos);
 
    char comando[100];
    sprintf(comando, "DSVS %s", rotulo);
@@ -113,7 +113,7 @@ parte_declara_sub_rotinas:
 } 
    declara_sub_rotinas
 {
-   char *rotulo = desempilha(&pilha_simbolos);
+   char *rotulo = desempilha_str(&pilha_simbolos);
    geraCodigo(rotulo, "NADA");
    nivel_lexico--;
 }
@@ -135,7 +135,7 @@ declara_sub_rotina:
       geraCodigo(NULL, comando);
    }
 
-   char *p = desempilha(&pilha_simbolos);
+   char *p = desempilha_str(&pilha_simbolos);
    simbolo_t s = buscaSimbolo(tabela, p);
    int sub_rotinas = quantSubRotinas(tabela, nivel_lexico);
 
@@ -152,7 +152,7 @@ declara_sub_rotina:
       geraCodigo(NULL, comando);
    }
 
-   char *f = desempilha(&pilha_simbolos);
+   char *f = desempilha_str(&pilha_simbolos);
    simbolo_t s = buscaSimbolo(tabela, f);
    int sub_rotinas = quantSubRotinas(tabela, nivel_lexico);
 
@@ -249,7 +249,7 @@ comando_sem_rotulo:
 comando_com_ident:
    IDENT 
 {
-   empilha(token, &pilha_simbolos);
+   empilha_str(token, &pilha_simbolos);
 }
    atr_proc
 ;
@@ -264,7 +264,7 @@ comando_repetitivo:
 {
    char rotulo[100];
    sprintf(rotulo, "R%02d", num_rotulos++);
-   empilha(rotulo, &pilha_simbolos);
+   empilha_str(rotulo, &pilha_simbolos);
    geraCodigo(rotulo, "NADA");
 
    tipoOP = PADRAO;
@@ -273,7 +273,7 @@ comando_repetitivo:
 {
    char rotulo[50];
    sprintf(rotulo, "R%02d", num_rotulos++);
-   empilha(rotulo, &pilha_simbolos);
+   empilha_str(rotulo, &pilha_simbolos);
 
    char comando[100];
    sprintf(comando, "DSVF %s", rotulo);
@@ -281,8 +281,8 @@ comando_repetitivo:
 }
    DO comando_sem_rotulo
 {
-   char *rotEnd = desempilha(&pilha_simbolos);
-   char *rotWhile = desempilha(&pilha_simbolos);
+   char *rotEnd = desempilha_str(&pilha_simbolos);
+   char *rotWhile = desempilha_str(&pilha_simbolos);
 
    char comando[100];
 
@@ -296,7 +296,7 @@ comando_repetitivo:
 comando_condicional:
    if_then if_else 
 {
-   char *rotulo = desempilha(&pilha_simbolos);
+   char *rotulo = desempilha_str(&pilha_simbolos);
    geraCodigo(rotulo, "NADA");
 }
 ;
@@ -306,7 +306,7 @@ if_then:
 {
    char rotulo[50];
    sprintf(rotulo, "R%02d", num_rotulos++);
-   empilha(rotulo, &pilha_simbolos);
+   empilha_str(rotulo, &pilha_simbolos);
 
    char comando[100];
    sprintf(comando, "DSVF %s", rotulo);
@@ -324,11 +324,11 @@ if_else:
    sprintf(comando, "DSVS %s", rotulo);
    geraCodigo(NULL, comando);
 
-   char *rotElse = desempilha(&pilha_simbolos);
+   char *rotElse = desempilha_str(&pilha_simbolos);
 
    geraCodigo(rotElse, "NADA");
 
-   empilha(rotulo, &pilha_simbolos);
+   empilha_str(rotulo, &pilha_simbolos);
 }
    comando_sem_rotulo
    | %prec LOWER_THAN_ELSE
@@ -416,7 +416,7 @@ ident_func:
       geraCodigo(NULL, comando);
    }
    else if (simbolo.tipo_simbolo == FUNCAO) {
-      empilha(token, &pilha_simbolos);
+      empilha_str(token, &pilha_simbolos);
    }
    else
       imprimeErro ("Operação inválida.");
@@ -446,7 +446,7 @@ declaracao_procedure:
    sprintf(comando, "ENPR %d", nivel_lexico);
    geraCodigo(rotulo, comando);
 
-   empilha (token, &pilha_simbolos);
+   empilha_str (token, &pilha_simbolos);
 }
    parametros_formais PONTO_E_VIRGULA bloco
 ;
@@ -467,7 +467,7 @@ declaracao_function:
    sprintf(comando, "ENPR %d", nivel_lexico);
    geraCodigo(rotulo, comando);
 
-   empilha (token, &pilha_simbolos);
+   empilha_str (token, &pilha_simbolos);
 }
    parametros_formais DOIS_PONTOS IDENT
 {
@@ -502,7 +502,7 @@ secao_parametros_formais:
 ;
 
 lista_var_formais:
-   VAR {empilha("REF", &pilha_tipos);} lista_idents_formais DOIS_PONTOS IDENT
+   VAR {empilha_str("REF", &pilha_tipos);} lista_idents_formais DOIS_PONTOS IDENT
 {
    if (strcmp(token, "integer") == 0)
       atualizaTipoParam(&tabela, INT, num_vars_tipo);
@@ -512,10 +512,10 @@ lista_var_formais:
       imprimeErro("Tipo de variavel não aceito.");
 
    num_vars_tipo = 0;
-   desempilha(&pilha_tipos);
+   desempilha_str(&pilha_tipos);
 }
 
-   | {empilha("VALOR", &pilha_tipos);} lista_idents_formais DOIS_PONTOS IDENT
+   | {empilha_str("VALOR", &pilha_tipos);} lista_idents_formais DOIS_PONTOS IDENT
 {
    if (strcmp(token, "integer") == 0)
       atualizaTipoParam(&tabela, INT, num_vars_tipo);
@@ -525,14 +525,14 @@ lista_var_formais:
       imprimeErro("Tipo de variavel não aceito.");
 
    num_vars_tipo = 0;
-   desempilha(&pilha_tipos);
+   desempilha_str(&pilha_tipos);
 }
 ;
 
 lista_idents_formais:
    lista_idents_formais VIRGULA IDENT
 {
-   char *passagem = desempilha(&pilha_tipos);
+   char *passagem = desempilha_str(&pilha_tipos);
    if (strcmp(passagem, "VALOR") == 0) 
       insereParamTabela(&tabela, token, nivel_lexico, VALOR);
    else if (strcmp(passagem, "REF") == 0)
@@ -541,11 +541,11 @@ lista_idents_formais:
    num_vars_tipo++;
    num_vars++;
 
-   empilha (passagem, &pilha_tipos);
+   empilha_str (passagem, &pilha_tipos);
 }
    | IDENT
 {
-   char *passagem = desempilha(&pilha_tipos);
+   char *passagem = desempilha_str(&pilha_tipos);
    if (strcmp(passagem, "VALOR") == 0) 
       insereParamTabela(&tabela, token, nivel_lexico, VALOR);
 
@@ -555,7 +555,7 @@ lista_idents_formais:
    num_vars_tipo++;
    num_vars++;
 
-   empilha (passagem, &pilha_tipos);
+   empilha_str (passagem, &pilha_tipos);
 }
 ;
 
@@ -564,7 +564,7 @@ chamada_sub_rotina:
    tipoOP = SUB_ROT;
    ivar = 0;
    quant_fator = 0;
-   char *ident = desempilha(&pilha_simbolos);
+   char *ident = desempilha_str(&pilha_simbolos);
    simbolo_t simb = buscaSimbolo(tabela, ident);   
    sub_rotina = simb.sub_rot;
 
@@ -595,7 +595,7 @@ lista_espressoes:
 espressoes:
    espressoes VIRGULA expressao 
 {
-   char *tipo = desempilha(&pilha_tipos);
+   char *tipo = desempilha_str(&pilha_tipos);
    if (sub_rotina.passagem_param[ivar] == REFERENCIA) {
       if (tipo_fator != F_IDENT || quant_fator > 1)
          imprimeErro ("Parametro invalido.");
@@ -615,7 +615,7 @@ espressoes:
 }
    | expressao
 {
-   char *tipo = desempilha(&pilha_tipos);
+   char *tipo = desempilha_str(&pilha_tipos);
    if (sub_rotina.passagem_param[ivar] == REFERENCIA) {
       if (tipo_fator != F_IDENT || quant_fator > 1)
          imprimeErro ("Parametro invalido.");
@@ -643,20 +643,20 @@ atribuicao:
    ATRIBUICAO 
 {  
    tipoOP = PADRAO;
-   char *destino = desempilha(&pilha_simbolos);
+   char *destino = desempilha_str(&pilha_simbolos);
    simbolo_t var = buscaSimbolo(tabela, destino);
    if (var.tipo_simbolo == PROCEDIMENTO) {
       imprimeErro("Operação não permitida (deveria ser uma função).");
    }
 
-   empilha(destino, &pilha_simbolos);
+   empilha_str(destino, &pilha_simbolos);
 } 
    expressao
 {
    char comando[100];
 
-   char *exp = desempilha(&pilha_tipos);
-   char *destino = desempilha(&pilha_simbolos);
+   char *exp = desempilha_str(&pilha_tipos);
+   char *destino = desempilha_str(&pilha_simbolos);
 
    simbolo_t var = buscaSimbolo(tabela, destino);
 
@@ -694,36 +694,36 @@ expressao:
 {
    validaTipos(&pilha_tipos, INT);
 
-   char *comando = desempilha(&pilha_simbolos);
+   char *comando = desempilha_str(&pilha_simbolos);
    geraCodigo(NULL, comando);
 
-   empilha("BOOL", &pilha_tipos);
+   empilha_str("BOOL", &pilha_tipos);
 }
    | expressao_simples
 ;
 
 operacao_booleana:
-   IGUAL { empilha("CMIG", &pilha_simbolos); }
-   | DIFERENTE { empilha("CMDG", &pilha_simbolos); }
-   | MENOR { empilha("CMME", &pilha_simbolos); }
-   | MAIOR { empilha("CMMA", &pilha_simbolos); }
-   | MENORI { empilha("CMEG", &pilha_simbolos); }
-   | MAIORI { empilha("CMAG", &pilha_simbolos); }
+   IGUAL { empilha_str("CMIG", &pilha_simbolos); }
+   | DIFERENTE { empilha_str("CMDG", &pilha_simbolos); }
+   | MENOR { empilha_str("CMME", &pilha_simbolos); }
+   | MAIOR { empilha_str("CMMA", &pilha_simbolos); }
+   | MENORI { empilha_str("CMEG", &pilha_simbolos); }
+   | MAIORI { empilha_str("CMAG", &pilha_simbolos); }
 ;
 
 expressao_simples:
-   expressao_simples SOMA termo { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "SOMA"); empilha("INT", &pilha_tipos); }
-   | expressao_simples SUBT termo { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "SUBT"); empilha("INT", &pilha_tipos); }
-   | expressao_simples OR termo { validaTipos(&pilha_tipos, BOOL); geraCodigo(NULL, "DISJ"); empilha("BOOL", &pilha_tipos); }
+   expressao_simples SOMA termo { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "SOMA"); empilha_str("INT", &pilha_tipos); }
+   | expressao_simples SUBT termo { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "SUBT"); empilha_str("INT", &pilha_tipos); }
+   | expressao_simples OR termo { validaTipos(&pilha_tipos, BOOL); geraCodigo(NULL, "DISJ"); empilha_str("BOOL", &pilha_tipos); }
    | termo
 ;
 
 
 termo:
    fator
-   | termo MULT fator { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "MULT"); empilha("INT", &pilha_tipos); }
-   | termo DIVI fator { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "DIVI"); empilha("INT", &pilha_tipos); }
-   | termo AND fator { validaTipos(&pilha_tipos, BOOL); geraCodigo(NULL, "CONJ"); empilha("BOOL", &pilha_tipos); }
+   | termo MULT fator { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "MULT"); empilha_str("INT", &pilha_tipos); }
+   | termo DIVI fator { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "DIVI"); empilha_str("INT", &pilha_tipos); }
+   | termo AND fator { validaTipos(&pilha_tipos, BOOL); geraCodigo(NULL, "CONJ"); empilha_str("BOOL", &pilha_tipos); }
 ;
 
 fator:
@@ -737,14 +737,14 @@ fator:
    | NOT fator
 {
    quant_fator++;
-   char *fator = desempilha(&pilha_tipos);
+   char *fator = desempilha_str(&pilha_tipos);
 
    if (strcmp(fator, "BOOL") != 0)
       imprimeErro("Atribuição inválida.");
 
    geraCodigo(NULL, "NEGA");
 
-   empilha("BOOL", &pilha_tipos);
+   empilha_str("BOOL", &pilha_tipos);
 }
    | true_false {tipo_fator = F_BOOL;}
 ;
@@ -753,12 +753,12 @@ true_false:
    TRUE
 {
    geraCodigo(NULL, "CRCT 1");
-   empilha("BOOL", &pilha_tipos);
+   empilha_str("BOOL", &pilha_tipos);
 }
    | FALSE
 {
    geraCodigo(NULL, "CRCT 0");
-   empilha("BOOL", &pilha_tipos);
+   empilha_str("BOOL", &pilha_tipos);
 }
 
 funcao_expressao:
@@ -768,7 +768,7 @@ funcao_expressao:
    quant_fator++;
 
    if (var.tipo_simbolo == FUNCAO) {
-      empilha(token, &pilha_simbolos);
+      empilha_str(token, &pilha_simbolos);
       empilhaFunc(var.tipo, &pilha_tipos);
       tipo_fator = F_FUNC;
    }
@@ -812,9 +812,9 @@ int main(int argc, char **argv)
    *  Inicializa estruturas
    * ------------------------------------------------------------------- */
    inicializa_tabela(&tabela);
-   inicializa_pilha(&pilha_simbolos);
-   inicializa_pilha(&pilha_tipos);
-   inicializa_pilha(&rotulos);
+   inicializa_pilha_str(&pilha_simbolos);
+   inicializa_pilha_str(&pilha_tipos);
+   inicializa_pilha_str(&rotulos);
 
    yyin = fp;
    yyparse();
