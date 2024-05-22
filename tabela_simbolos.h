@@ -43,7 +43,7 @@ typedef struct {
  
 void inicializa_tabela (tabela_simbolos_t *ts);
 
-void insere (tabela_simbolos_t *ts, simbolo_t s); 
+void insere (tabela_simbolos_t *ts, simbolo_t s, int nivel); 
 
 void retira (tabela_simbolos_t *ts, int n);
 
@@ -78,3 +78,6 @@ void empilhaNUM (char *token, pilha_int *pilha);
 void empilhaIDENT (char *token, int ivar, int quantFator, int tipoOP, sub_rotina_t proc, pilha_int *pilha, tabela_simbolos_t ts);
 
 void empilhaFunc (int tipo, pilha_int *pilha);
+
+void inserePilha (tabela_simbolos_t *ts, simbolo_t s); 
+simbolo_t removePilha (tabela_simbolos_t *ts);

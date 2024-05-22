@@ -16,12 +16,20 @@ int nivel_lexico = 0;
 int num_rotulos = 0;
 
 int ivar = 0;
+pilha_int pilha_ivar;
+
 int tipoOP = 0;
-int num_ident;
+pilha_int pilha_tipoOP;
+
 int quant_fator = 0;
+
 int tipo_fator;
+
 sub_rotina_t sub_rotina;
-char rotinaDeclaracao[TAM_TOKEN];
+tabela_simbolos_t pilha_sub_rotina;
+
+char declaraRot[TAM_TOKEN] = "";
+pilha_str pilha_declaraRot;
 
 tabela_simbolos_t tabela;
 pilha_int pilha_tipos;
@@ -63,6 +71,10 @@ programa:
    printf("Pilha tipos %d\n", tamanho_pilha_int(pilha_tipos));
    printf("Pilha simbolos %d\n", tamanho_pilha_str(pilha_simbolos));
    printf("Pilha rotulos %d\n", tamanho_pilha_str(rotulos));
+   printf("Pilha ivar %d\n", tamanho_pilha_int(pilha_ivar));
+   printf("Pilha tipoOP %d\n", tamanho_pilha_int(pilha_tipoOP));
+   printf("Pilha declaraRot %d\n", tamanho_pilha_str(pilha_declaraRot));
+   printf("Pilha sub_rotina %d\n", pilha_sub_rotina.topo + 1);
 }
 ;
 
@@ -337,6 +349,8 @@ if_then:
    char comando[100];
    sprintf(comando, "DSVF %s", rotulo);
    geraCodigo(NULL, comando);
+
+   desempilha_int(&pilha_tipos);
 }
    THEN comando_sem_rotulo
 
@@ -390,7 +404,7 @@ write:
 ;
 
 lista_write:
-   lista_write VIRGULA expressao {geraCodigo(NULL, "IMPR");}
+   lista_write VIRGULA expressao {geraCodigo(NULL, "IMPR"); desempilha_int(&pilha_tipos);}
    | expressao {geraCodigo(NULL, "IMPR"); desempilha_int(&pilha_tipos);}
 ;
 
@@ -404,7 +418,8 @@ declaracao_procedure:
    char rotulo[50];
    sprintf(rotulo, "R%02d", num_rotulos++);
 
-   strncpy(rotinaDeclaracao, token, TAM_TOKEN);
+   empilha_str(declaraRot, &pilha_declaraRot);
+   strncpy(declaraRot, token, TAM_TOKEN);
 
    insereRotinaTabela(&tabela, token, rotulo, nivel_lexico, PROCEDIMENTO);
 
@@ -415,6 +430,10 @@ declaracao_procedure:
    empilha_str (token, &pilha_simbolos);
 }
    parametros_formais PONTO_E_VIRGULA bloco
+{
+   char *aux = desempilha_str(&pilha_declaraRot);
+   strncpy(declaraRot, aux, TAM_TOKEN);
+}
 ;
 
 declaracao_function:
@@ -427,7 +446,8 @@ declaracao_function:
    char rotulo[50];
    sprintf(rotulo, "R%02d", num_rotulos++);
 
-   strncpy(rotinaDeclaracao, token, TAM_TOKEN);
+   empilha_str(declaraRot, &pilha_declaraRot);
+   strncpy(declaraRot, token, TAM_TOKEN);
 
    insereRotinaTabela(&tabela, token, rotulo, nivel_lexico, FUNCAO);
 
@@ -447,6 +467,10 @@ declaracao_function:
       imprimeErro("Tipo de variavel não aceito.");
 }
    PONTO_E_VIRGULA bloco
+{
+   char *aux = desempilha_str(&pilha_declaraRot);
+   strncpy(declaraRot, aux, TAM_TOKEN);
+}
 ;
 
 parametros_formais:
@@ -529,11 +553,19 @@ lista_idents_formais:
 
 chamada_sub_rotina:
 {
+   empilha_int(tipoOP, &pilha_tipoOP);
    tipoOP = SUB_ROT;
+
+   empilha_int(ivar, &pilha_ivar);
    ivar = 0;
+
    quant_fator = 0;
    char *ident = desempilha_str(&pilha_simbolos);
    simbolo_t simb = buscaSimbolo(tabela, ident);   
+
+   simbolo_t aux;
+   aux.sub_rot = sub_rotina;
+   inserePilha(&pilha_sub_rotina, aux);
    sub_rotina = simb.sub_rot;
 
    if (simb.forma == FUNCAO) {
@@ -548,6 +580,12 @@ chamada_sub_rotina:
    char comando[100];
    sprintf(comando, "CHPR %s,%d", sub_rotina.rotulo, nivel_lexico);
    geraCodigo (NULL, comando);
+
+   ivar = desempilha_int(&pilha_ivar);
+   tipoOP = desempilha_int(&pilha_tipoOP);
+
+   simbolo_t aux = removePilha(&pilha_sub_rotina);
+   sub_rotina = aux.sub_rot;
 }
 ;
 
@@ -605,7 +643,7 @@ atribuicao:
       imprimeErro("Operação não permitida (deveria ser uma função).");
    }
 
-   if ((var.forma == FUNCAO) && (strcmp(destino, rotinaDeclaracao) != 0) && (var.nivel > nivel_lexico))
+   if ((var.forma == FUNCAO) && (strcmp(destino, declaraRot) != 0) && (var.nivel > nivel_lexico))
       imprimeErro("Atribuição inválida.");
 
    empilha_str(destino, &pilha_simbolos);
@@ -732,9 +770,13 @@ true_false:
 funcao_expressao:
    IDENT 
 {
+
    simbolo_t var = buscaSimbolo(tabela, token);
    quant_fator++;
    if (var.forma == FUNCAO) {
+      if ((tipoOP == SUB_ROT) && (sub_rotina.passagem_param[ivar] == REFERENCIA))
+         imprimeErro("Parametro inválido");
+      
       empilhaFunc(var.tipo, &pilha_tipos);
       tipo_fator = F_FUNC;
 
@@ -754,7 +796,7 @@ funcao_expressao:
 ;
 
 chamada_rot_exp:
-   chamada_sub_rotina {tipoOP = PADRAO;}
+   chamada_sub_rotina
    |
 {
    char *nome = desempilha_str(&pilha_simbolos);
@@ -803,6 +845,11 @@ int main(int argc, char **argv)
    inicializa_pilha_str(&pilha_simbolos);
    inicializa_pilha_str(&rotulos);
    inicializa_pilha_int(&pilha_tipos);
+   
+   inicializa_pilha_int(&pilha_ivar);
+   inicializa_pilha_int(&pilha_tipoOP);
+   inicializa_pilha_str(&pilha_declaraRot);
+   inicializa_tabela(&pilha_sub_rotina);
 
    yyin = fp;
    yyparse();

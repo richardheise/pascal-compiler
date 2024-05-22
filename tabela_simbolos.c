@@ -7,15 +7,17 @@ void inicializa_tabela (tabela_simbolos_t *ts) {
     return;
 }
 
-void insere (tabela_simbolos_t *ts, simbolo_t s) {
+void insere (tabela_simbolos_t *ts, simbolo_t s, int nivel) {
     if ((ts->topo + 1) == MAX_TABELA)
         imprimeErro("Tamanho maximo da tabela de simbolos atingido.");
 
     simbolo_t aux = busca (*ts, s.nome);
     if (aux.tipo != -1) {
-        char erro[100];
-        sprintf(erro, "Nome %s ja existe.", s.nome);
-        imprimeErro(erro);
+        if (aux.nivel >= nivel) {
+            char erro[100];
+            sprintf(erro, "Nome %s ja existe.", s.nome);
+            imprimeErro(erro);
+        }
     }
 
     ts->topo = ts->topo + 1;
@@ -68,7 +70,7 @@ void insereVarTabela (tabela_simbolos_t *ts, char* token, int nivel, int desloca
     s.deslocamento = deslocamento;
     
     s.forma = VARIAVEL;
-    insere (ts, s);
+    insere (ts, s, nivel);
 }
 
 void insereRotinaTabela (tabela_simbolos_t *ts, char* token, char* rotulo, int nivel, int tipo_rotina) {
@@ -89,7 +91,7 @@ void insereRotinaTabela (tabela_simbolos_t *ts, char* token, char* rotulo, int n
     }
 
     s.sub_rot = rotina;
-    insere (ts, s);
+    insere (ts, s, nivel);
 }
 
 void insereParamTabela (tabela_simbolos_t *ts, char* token, int nivel, int passagem) {
@@ -102,7 +104,7 @@ void insereParamTabela (tabela_simbolos_t *ts, char* token, int nivel, int passa
     
     s.forma = PARAMETRO_FORMAL;
     s.param = pf;
-    insere (ts, s);
+    insere (ts, s, nivel);
 }
 
 void atualizaTipoVar (tabela_simbolos_t *ts, int tipo, int quant) {
@@ -197,18 +199,17 @@ void empilhaNUM(char *token, pilha_int *pilha) {
     return;
 }
 
-void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, sub_rotina_t proc, pilha_int *pilha, tabela_simbolos_t ts) {
+void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, sub_rotina_t rotina, pilha_int *pilha, tabela_simbolos_t ts) {
     char comando[100];
     simbolo_t simbolo = buscaSimbolo(ts, token);
 
     if (tipoOP == SUB_ROT) {
-        if (ivar >= proc.num_param)
+        if (ivar >= rotina.num_param)
             imprimeErro ("Quantidade de parâmetros inválido.");
 
-        if (proc.passagem_param[ivar] == REFERENCIA) {
+        if (rotina.passagem_param[ivar] == REFERENCIA) {
             if (quantFator > 1)
                 imprimeErro ("Parametro invalido, passagem de mais de um parametro por referencia.");
-
 
             if (simbolo.forma == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
                 sprintf(comando, "CRVL %d,%d", simbolo.nivel, simbolo.deslocamento);
@@ -232,7 +233,7 @@ void empilhaIDENT(char *token, int ivar, int quantFator, int tipoOP, sub_rotina_
         return;
     }
 
-    if (simbolo.tipo == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
+    if (simbolo.forma == PARAMETRO_FORMAL && simbolo.param.passagem == REFERENCIA) {
         sprintf(comando, "CRVI %d,%d", simbolo.nivel, simbolo.deslocamento);
     }
     else {
@@ -252,4 +253,23 @@ void empilhaFunc (int tipo, pilha_int *pilha) {
     empilha_int(tipo, pilha);
     
     return;
+}
+
+void inserePilha (tabela_simbolos_t *ts, simbolo_t s) {
+    if ((ts->topo + 1) == MAX_TABELA)
+        imprimeErro("Tamanho maximo da tabela de simbolos atingido.");
+
+    ts->topo = ts->topo + 1;
+    ts->itens[ts->topo] = s;
+
+    return;
+}
+
+simbolo_t removePilha (tabela_simbolos_t *ts) {
+    if (ts->topo >= 0) {
+        simbolo_t aux = ts->itens[ts->topo];
+        ts->topo = ts->topo - 1;
+
+        return aux;
+    }
 }

@@ -28,7 +28,7 @@ int empilha_str (char* x, pilha_str *p) {
     
 char* desempilha_str (pilha_str *p) {
     if (pilha_vazia_str(*p))
-        return 0;
+        return NULL;
 
     char* aux = p->itens[p->topo];
     p->topo = p->topo - 1;
