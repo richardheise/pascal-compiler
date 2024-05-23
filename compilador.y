@@ -89,7 +89,20 @@ definicoes_bloco:
    parte_declara_rotulos
    parte_define_tipos
    parte_declara_vars
+{
+   // char rotulo[50];
+   // sprintf(rotulo, "R%02d", num_rotulos++);
+   // empilha_str(rotulo, &pilha_simbolos);
+
+   // char comando[100];
+   // sprintf(comando, "DSVS %s", rotulo);
+   // geraCodigo(NULL, comando);
+}
    parte_declara_sub_rotinas
+{
+   // char *rotulo = desempilha_str(&pilha_simbolos);
+   // geraCodigo(rotulo, "NADA");
+}
 ;
 
 parte_declara_rotulos:
@@ -342,6 +355,10 @@ comando_condicional:
 if_then:
    IF {tipoOP = PADRAO;} expressao
 {
+   int tipoExp = desempilha_int(&pilha_tipos);
+   if (tipoExp != BOOL)
+      imprimeErro("Expressão não booleana.");
+
    char rotulo[50];
    sprintf(rotulo, "R%02d", num_rotulos++);
    empilha_str(rotulo, &pilha_simbolos);
@@ -350,7 +367,6 @@ if_then:
    sprintf(comando, "DSVF %s", rotulo);
    geraCodigo(NULL, comando);
 
-   desempilha_int(&pilha_tipos);
 }
    THEN comando_sem_rotulo
 
