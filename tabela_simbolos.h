@@ -22,6 +22,13 @@ typedef struct {
 } sub_rotina_t;
 
 typedef struct {
+   int num_param;
+   char nome[TAM_TOKEN];
+   char *nome_atributo[MAX_PARAM];
+   int tipo_atributo[MAX_PARAM];
+} record_t;
+
+typedef struct {
    char nome[TAM_TOKEN];
    int nivel;
    int tipo;
@@ -29,6 +36,7 @@ typedef struct {
    union {
       parametro_formal_t param;
       sub_rotina_t sub_rot;
+      record_t record;
    };
    enum tipo_simb { VARIAVEL, PARAMETRO_FORMAL, PROCEDIMENTO, FUNCAO } forma;
 } simbolo_t;
