@@ -1,3 +1,18 @@
+/***********************************************************************
+*
+* Autor: Eduardo Henrique dos Santos Cerolli
+* GRR: 20190397
+*
+* Autor: Richard Fernando Heise Ferreira
+* GRR: 20191053
+*
+* Data: 23/05/2024
+* Instituição: Universidade Federal do Paraná
+* Curso: Ciência da Computação
+* Motivo: Trabalho de compiladores (CI1211)
+*
+***********************************************************************/
+
 #ifndef PILHA_INT
 #define PILHA_INT
 
