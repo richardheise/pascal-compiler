@@ -38,7 +38,7 @@ typedef struct {
 } sub_rotina_t;
 
 typedef struct {
-   int num_param;
+   int num_atributos;
    char nome[TAM_TOKEN];
    char *nome_atributo[MAX_PARAM];
    int tipo_atributo[MAX_PARAM];
