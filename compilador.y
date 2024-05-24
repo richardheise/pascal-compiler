@@ -39,6 +39,11 @@ int tipo_fator;
 sub_rotina_t sub_rotina;
 tabela_simbolos_t pilha_sub_rotina;
 
+int teve_type = 0;
+pilha_int pilha_teve_type;
+simbolo_t type_atual;
+tabela_simbolos_t pilha_type_atual;
+
 char declaraRot[TAM_TOKEN] = "";
 pilha_str pilha_declaraRot;
 
@@ -86,6 +91,8 @@ programa:
    printf("Pilha tipoOP %d\n", tamanho_pilha_int(pilha_tipoOP));
    printf("Pilha declaraRot %d\n", tamanho_pilha_str(pilha_declaraRot));
    printf("Pilha sub_rotina %d\n", pilha_sub_rotina.topo + 1);
+   printf("Pilha teve_type %d\n", tamanho_pilha_int(pilha_teve_type));
+   printf("Pilha type_atual %d\n", pilha_type_atual.topo + 1);
 }
 ;
 
@@ -137,7 +144,21 @@ types:
 ;
 
 definicao_tipo:
-   IDENT IGUAL tipo
+   IDENT {empilha_str(token, &pilha_simbolos);} IGUAL tipo_type
+;
+
+tipo_type: 
+   IDENT
+{
+   char *nome = desempilha_str(&pilha_simbolos);
+   int tipo;
+   if (strcmp(token, "integer") == 0)
+      tipo = INT;
+   else if (strcmp(token, "boolean") == 0)
+      tipo = BOOL;
+
+   insereTypeTabela(&tabela, nome, tipo);
+}
 ;
 
 parte_declara_sub_rotinas:
@@ -234,11 +255,18 @@ tipo:
    IDENT
 {
    if (strcmp(token, "integer") == 0)
-      atualizaTipoVar(&tabela, INT, num_vars_tipo);
+      atualizaTipoVar(&tabela, INT, NULL, num_vars_tipo);
    else if (strcmp(token, "boolean") == 0)
-      atualizaTipoVar(&tabela, BOOL, num_vars_tipo);
-   else
-      imprimeErro("Tipo de variavel não aceito.");
+      atualizaTipoVar(&tabela, BOOL, NULL, num_vars_tipo);
+   else {
+      simbolo_t aux = busca(tabela, token);
+      if (aux.tipo == -1 && aux.tipo != DEF_TIPO) {
+         imprimeErro("Tipo de variavel não aceito.");
+      }
+      else {
+         atualizaTipoVar(&tabela, DEF, aux.nome, num_vars_tipo);
+      }
+   }
 }
 ;
 
@@ -272,8 +300,8 @@ comando_composto:
 ;
 
 comandos:
-   comandos PONTO_E_VIRGULA comando_sem_rotulo
-   | comando_sem_rotulo
+   comandos PONTO_E_VIRGULA {quant_fator = 0;} comando_sem_rotulo
+   | {quant_fator = 0;} comando_sem_rotulo
 ;
 
 comando_sem_rotulo:
@@ -326,12 +354,16 @@ comando_repetitivo:
    geraCodigo(rotulo, "NADA");
 
    tipoOP = PADRAO;
+   teve_type = 0;
+   quant_fator = 0;
 }
    expressao
 {
    int tipoExp = desempilha_int (&pilha_tipos);
    if (tipoExp != BOOL)
-      imprimeErro ("Expressão não é booleana.");
+      if (teve_type && type_atual.tipo != BOOL)
+         imprimeErro("Operação não boolena.");
+      
 
    char rotulo[50];
    sprintf(rotulo, "R%02d", num_rotulos++);
@@ -364,11 +396,19 @@ comando_condicional:
 ;
 
 if_then:
-   IF {tipoOP = PADRAO;} expressao
+   IF {tipoOP = PADRAO; teve_type = 0; quant_fator = 0;} expressao
 {
    int tipoExp = desempilha_int(&pilha_tipos);
-   if (tipoExp != BOOL)
-      imprimeErro("Expressão não booleana.");
+   if (tipoExp == DEF) {
+      if (teve_type) {
+         if (type_atual.tipo != BOOL) {
+            imprimeErro("Operação não boolena.");
+         }
+      }
+   }
+   else if (tipoExp != BOOL) {
+      imprimeErro("Operação não boolena.");
+   }
 
    char rotulo[50];
    sprintf(rotulo, "R%02d", num_rotulos++);
@@ -426,7 +466,7 @@ termo_read:
 ;
 
 write:
-   WRITE ABRE_PARENTESES {tipoOP = PADRAO;} lista_write FECHA_PARENTESES 
+   WRITE ABRE_PARENTESES {tipoOP = PADRAO; teve_type = 0;} lista_write FECHA_PARENTESES 
    | WRITE ABRE_PARENTESES FECHA_PARENTESES 
 ;
 
@@ -487,11 +527,18 @@ declaracao_function:
    parametros_formais DOIS_PONTOS IDENT
 {
    if (strcmp(token, "integer") == 0)
-      atualizaFunc(&tabela, INT, num_vars);
+      atualizaFunc(&tabela, INT, NULL, num_vars);
    else if (strcmp(token, "boolean") == 0)
-      atualizaFunc(&tabela, BOOL, num_vars);
-   else
-      imprimeErro("Tipo de variavel não aceito.");
+      atualizaFunc(&tabela, BOOL, NULL, num_vars);
+   else {
+      simbolo_t aux = busca(tabela, token);
+      if (aux.tipo == -1 && aux.tipo != DEF_TIPO) {
+         imprimeErro("Tipo de variavel não aceito.");
+      }
+      else {
+         atualizaFunc(&tabela, DEF, aux.nome, num_vars);
+      }
+   }
 }
    PONTO_E_VIRGULA bloco
 {
@@ -524,11 +571,18 @@ lista_var_formais:
    VAR {empilha_int(REFERENCIA, &pilha_tipos);} lista_idents_formais DOIS_PONTOS IDENT
 {
    if (strcmp(token, "integer") == 0)
-      atualizaTipoParam(&tabela, INT, num_vars_tipo);
+      atualizaTipoParam(&tabela, INT, NULL, num_vars_tipo);
    else if (strcmp(token, "boolean") == 0)
-      atualizaTipoParam(&tabela, BOOL, num_vars_tipo);
-   else
-      imprimeErro("Tipo de variavel não aceito.");
+      atualizaTipoParam(&tabela, BOOL, NULL, num_vars_tipo);
+   else {
+      simbolo_t aux = busca(tabela, token);
+      if (aux.tipo == -1 && aux.tipo != DEF_TIPO) {
+         imprimeErro("Tipo de variavel não aceito.");
+      }
+      else {
+         atualizaTipoParam(&tabela, DEF, aux.nome, num_vars_tipo);
+      }
+   }
 
    num_vars_tipo = 0;
    desempilha_int(&pilha_tipos);
@@ -537,11 +591,18 @@ lista_var_formais:
    | {empilha_int(VALOR, &pilha_tipos);} lista_idents_formais DOIS_PONTOS IDENT
 {
    if (strcmp(token, "integer") == 0)
-      atualizaTipoParam(&tabela, INT, num_vars_tipo);
+      atualizaTipoParam(&tabela, INT, NULL, num_vars_tipo);
    else if (strcmp(token, "boolean") == 0)
-      atualizaTipoParam(&tabela, BOOL, num_vars_tipo);
-   else
-      imprimeErro("Tipo de variavel não aceito.");
+      atualizaTipoParam(&tabela, BOOL, NULL, num_vars_tipo);
+   else {
+      simbolo_t aux = busca(tabela, token);
+      if (aux.tipo == -1 && aux.tipo != DEF_TIPO) {
+         imprimeErro("Tipo de variavel não aceito.");
+      }
+      else {
+         atualizaTipoParam(&tabela, DEF, aux.nome, num_vars_tipo);
+      }
+   }
 
    num_vars_tipo = 0;
    desempilha_int(&pilha_tipos);
@@ -586,14 +647,19 @@ chamada_sub_rotina:
    empilha_int(ivar, &pilha_ivar);
    ivar = 0;
 
+   inserePilha(&pilha_type_atual, type_atual);
+   empilha_int(teve_type, &pilha_teve_type);
+   teve_type = 0;
+
    quant_fator = 0;
    char *ident = desempilha_str(&pilha_simbolos);
-   simbolo_t simb = buscaSimbolo(tabela, ident);   
+   simbolo_t simb = buscaSimbolo(tabela, ident);
 
    simbolo_t aux;
    aux.sub_rot = sub_rotina;
    inserePilha(&pilha_sub_rotina, aux);
    sub_rotina = simb.sub_rot;
+
 
    if (simb.forma == FUNCAO) {
       geraCodigo (NULL, "AMEM 1");
@@ -610,6 +676,8 @@ chamada_sub_rotina:
 
    ivar = desempilha_int(&pilha_ivar);
    tipoOP = desempilha_int(&pilha_tipoOP);
+   teve_type = desempilha_int(&pilha_teve_type);
+   type_atual = removePilha(&pilha_type_atual);
 
    simbolo_t aux = removePilha(&pilha_sub_rotina);
    sub_rotina = aux.sub_rot;
@@ -617,7 +685,7 @@ chamada_sub_rotina:
 ;
 
 chamada_parametros:
-   ABRE_PARENTESES lista_espressoes FECHA_PARENTESES
+   ABRE_PARENTESES {teve_type = 0;} lista_espressoes FECHA_PARENTESES
 ;
 
 lista_espressoes:
@@ -674,24 +742,46 @@ atribuicao:
       imprimeErro("Atribuição inválida.");
 
    empilha_str(destino, &pilha_simbolos);
+
+   teve_type = 0;
 } 
    expressao
 {
    char comando[100];
 
    int tipoExp = desempilha_int(&pilha_tipos);
-   char *destino = desempilha_str(&pilha_simbolos);
+   char *destino_nome = desempilha_str(&pilha_simbolos);
 
-   simbolo_t var = buscaSimbolo(tabela, destino);
+   simbolo_t destino = buscaSimbolo(tabela, destino_nome);
 
-   if (var.tipo != tipoExp)
-      imprimeErro("Atribuição inválida.");
-
-   if (var.forma == PARAMETRO_FORMAL && var.param.passagem == REFERENCIA) {
-      sprintf(comando, "ARMI %d,%d", var.nivel, var.deslocamento);
+   if (destino.tipo == DEF && tipoExp == DEF) {
+      if (strcmp(destino.nome_type, type_atual.nome) != 0) {
+         imprimeErro("Tipos diferentes.");
+      }
+   }
+   else if (destino.tipo == DEF) {
+      simbolo_t t = buscaSimbolo(tabela, destino.nome_type);
+      if (t.tipo != tipoExp) {
+         imprimeErro("Tipos diferentes.");
+      }
+   }
+   else if (tipoExp == DEF) {
+      if (destino.tipo != type_atual.tipo) {
+         imprimeErro("Tipos diferentes.");
+      }
    }
    else {
-      sprintf(comando, "ARMZ %d,%d", var.nivel, var.deslocamento);
+      if (destino.tipo != tipoExp) {
+         imprimeErro("Tipos diferentes.");
+      }
+   }
+   
+
+   if (destino.forma == PARAMETRO_FORMAL && destino.param.passagem == REFERENCIA) {
+      sprintf(comando, "ARMI %d,%d", destino.nivel, destino.deslocamento);
+   }
+   else {
+      sprintf(comando, "ARMZ %d,%d", destino.nivel, destino.deslocamento);
    }
 
    geraCodigo(NULL, comando);
@@ -704,7 +794,10 @@ atribuicao:
 expressao:
    expressao_simples operacao_booleana expressao_simples
 {
-   validaTipos(&pilha_tipos, INT);
+   int tipo = INT;
+   if (teve_type)
+      tipo = DEF;
+   validaTipos(&pilha_tipos, tipo, type_atual, tabela, &pilha_simbolos);
 
    char *comando = desempilha_str(&pilha_simbolos);
    geraCodigo(NULL, comando);
@@ -724,18 +817,18 @@ operacao_booleana:
 ;
 
 expressao_simples:
-   expressao_simples SOMA termo { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "SOMA"); empilha_int(INT, &pilha_tipos); }
-   | expressao_simples SUBT termo { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "SUBT"); empilha_int(INT, &pilha_tipos); }
-   | expressao_simples OR termo { validaTipos(&pilha_tipos, BOOL); geraCodigo(NULL, "DISJ"); empilha_int(BOOL, &pilha_tipos); }
+   expressao_simples SOMA termo {int tipo = INT; if (teve_type) tipo = DEF; validaTipos(&pilha_tipos, tipo, type_atual, tabela, &pilha_simbolos); geraCodigo(NULL, "SOMA"); empilha_int(tipo, &pilha_tipos); }
+   | expressao_simples SUBT termo { int tipo = INT; if (teve_type) tipo = DEF; validaTipos(&pilha_tipos, tipo, type_atual, tabela, &pilha_simbolos); geraCodigo(NULL, "SUBT"); empilha_int(tipo, &pilha_tipos); }
+   | expressao_simples OR termo { teve_type = 0; validaTipos(&pilha_tipos, BOOL, type_atual, tabela, &pilha_simbolos); geraCodigo(NULL, "DISJ"); empilha_int(BOOL, &pilha_tipos); }
    | termo
 ;
 
 
 termo:
    fator
-   | termo MULT fator { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "MULT"); empilha_int(INT, &pilha_tipos); }
-   | termo DIVI fator { validaTipos(&pilha_tipos, INT); geraCodigo(NULL, "DIVI"); empilha_int(INT, &pilha_tipos); }
-   | termo AND fator { validaTipos(&pilha_tipos, BOOL); geraCodigo(NULL, "CONJ"); empilha_int(BOOL, &pilha_tipos); }
+   | termo MULT fator { int tipo = INT; if (teve_type) tipo = DEF; validaTipos(&pilha_tipos, tipo, type_atual, tabela, &pilha_simbolos); geraCodigo(NULL, "MULT"); empilha_int(tipo, &pilha_tipos); }
+   | termo DIVI fator { int tipo = INT; if (teve_type) tipo = DEF; validaTipos(&pilha_tipos, tipo, type_atual, tabela, &pilha_simbolos); geraCodigo(NULL, "DIVI"); empilha_int(tipo, &pilha_tipos); }
+   | termo AND fator { teve_type = 0; validaTipos(&pilha_tipos, BOOL, type_atual, tabela, &pilha_simbolos); geraCodigo(NULL, "CONJ"); empilha_int(BOOL, &pilha_tipos); }
 ;
 
 fator:
@@ -750,9 +843,13 @@ fator:
 {
    int t = desempilha_int(&pilha_tipos);
    if (t != INT)
-      imprimeErro("Operação inválida.");
+      if (teve_type && type_atual.tipo != INT)
+         imprimeErro("Tipo inválido.");
 
-   empilha_int(INT, &pilha_tipos);
+   if (teve_type)
+      empilha_int(DEF, &pilha_tipos);
+   else
+      empilha_int(INT, &pilha_tipos);
    quant_fator++;
    tipo_fator = F_NUM;
 }
@@ -760,10 +857,15 @@ fator:
 {
    int t = desempilha_int(&pilha_tipos);
    if (t != INT)
-      imprimeErro("Operação inválida.");
+      if (teve_type && type_atual.tipo != INT)
+         imprimeErro("Tipo inválido.");
 
    geraCodigo(NULL, "INVR");
-   empilha_int(INT, &pilha_tipos);
+
+   if (teve_type)
+      empilha_int(DEF, &pilha_tipos);
+   else
+      empilha_int(INT, &pilha_tipos);
    quant_fator++;
    tipo_fator = F_NUM;
 }
@@ -771,13 +873,16 @@ fator:
 {
    quant_fator++;
    int fator = desempilha_int(&pilha_tipos);
-
    if (fator != BOOL)
-      imprimeErro("Atribuição inválida.");
+      if (teve_type && type_atual.tipo != BOOL)
+         imprimeErro("Operação não boolena.");
 
    geraCodigo(NULL, "NEGA");
 
-   empilha_int(BOOL, &pilha_tipos);
+   if (teve_type)
+      empilha_int(DEF, &pilha_tipos);
+   else
+      empilha_int(BOOL, &pilha_tipos);
 }
    | true_false {tipo_fator = F_BOOL;}
 ;
@@ -796,10 +901,19 @@ true_false:
 
 funcao_expressao:
    IDENT 
-{
-
+{  
    simbolo_t var = buscaSimbolo(tabela, token);
    quant_fator++;
+
+   if (var.tipo == DEF) {
+      if (quant_fator != 1) {
+         printf("PQPPPPPPPPPPPPPPP %d %s\n", quant_fator, token);   
+         empilha_str(var.nome_type, &pilha_simbolos);
+      }
+      teve_type = 1;
+      type_atual = buscaSimbolo(tabela, var.nome_type);
+   }
+
    if (var.forma == FUNCAO) {
       if ((tipoOP == SUB_ROT) && (sub_rotina.passagem_param[ivar] == REFERENCIA))
          imprimeErro("Parametro inválido");
@@ -877,6 +991,8 @@ int main(int argc, char **argv)
    inicializa_pilha_int(&pilha_tipoOP);
    inicializa_pilha_str(&pilha_declaraRot);
    inicializa_tabela(&pilha_sub_rotina);
+   inicializa_pilha_int(&pilha_teve_type);
+   inicializa_tabela(&pilha_type_atual);
 
    yyin = fp;
    yyparse();

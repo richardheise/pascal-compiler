@@ -71,6 +71,7 @@ void imprime (tabela_simbolos_t ts) {
             case PARAMETRO_FORMAL: printf ("%s PARAMETRO_FORMAL Tipo:%d Nivel:%d Deslocamento:%d Passagem:%d\n", ts.itens[i].nome, ts.itens[i].tipo, ts.itens[i].nivel, ts.itens[i].deslocamento, ts.itens[i].param.passagem);break;
             case PROCEDIMENTO: printf ("%s PROCEDIMENTO Nivel:%d Rot:%s Param:%d\n", ts.itens[i].nome, ts.itens[i].nivel, ts.itens[i].sub_rot.rotulo, ts.itens[i].sub_rot.num_param);break;
             case FUNCAO: printf ("%s FUNCAO Nivel:%d Rot:%s Param:%d Tipo:%d Deslocamento:%d\n", ts.itens[i].nome, ts.itens[i].nivel, ts.itens[i].sub_rot.rotulo, ts.itens[i].sub_rot.num_param, ts.itens[i].tipo, ts.itens[i].deslocamento);break;
+            case DEF_TIPO: printf ("%s TYPE Tipo:%d\n", ts.itens[i].nome, ts.itens[i].tipo);break;
         }
     }
 
@@ -122,16 +123,30 @@ void insereParamTabela (tabela_simbolos_t *ts, char* token, int nivel, int passa
     insere (ts, s, nivel);
 }
 
-void atualizaTipoVar (tabela_simbolos_t *ts, int tipo, int quant) {
+void insereTypeTabela (tabela_simbolos_t *ts, char* token, int tipo) {
+    simbolo_t s;
+
+    strncpy(s.nome, token, TAM_TOKEN);
+    
+    s.forma = DEF_TIPO;
+    s.tipo = tipo;
+    insere (ts, s, 0);
+}
+
+void atualizaTipoVar (tabela_simbolos_t *ts, int tipo, char *nome_type, int quant) {
     for (int i = ts->topo; quant > 0; i--) {
         ts->itens[i].tipo = tipo;
+        if (tipo == DEF)
+            strncpy (ts->itens[i].nome_type, nome_type, TAM_TOKEN);
         quant--;
     }
 }
 
-void atualizaTipoParam (tabela_simbolos_t *ts, int tipo, int quant) {
+void atualizaTipoParam (tabela_simbolos_t *ts, int tipo, char *nome_type, int quant) {
     for (int i = ts->topo; quant > 0; i--) {
         ts->itens[i].tipo = tipo;
+        if (tipo == DEF)
+            strncpy (ts->itens[i].nome_type, nome_type, TAM_TOKEN);
         quant--;
     }
 }
@@ -146,6 +161,8 @@ void atualizaDeslocamentoParam (tabela_simbolos_t *ts, int nivel, int quant) {
         ts->itens[i].deslocamento = deslocamento;
 
         ts->itens[iProc].sub_rot.tipo_param[quant - 1] = ts->itens[i].tipo;
+        if (ts->itens[i].tipo == DEF)
+            strncpy (ts->itens[iProc].sub_rot.nome_type[quant - 1], ts->itens[i].nome_type, TAM_TOKEN);
         ts->itens[iProc].sub_rot.passagem_param[quant - 1] = ts->itens[i].param.passagem;
         
         quant--;
@@ -153,9 +170,11 @@ void atualizaDeslocamentoParam (tabela_simbolos_t *ts, int nivel, int quant) {
     }
 }
 
-void atualizaFunc (tabela_simbolos_t *ts, int tipo, int num_vars) {
+void atualizaFunc (tabela_simbolos_t *ts, int tipo, char *nome_type, int num_vars) {
     int iFunc = ts->topo - num_vars;
     ts->itens[iFunc].tipo = tipo;
+    if (tipo == DEF)
+        strncpy (ts->itens[iFunc].nome_type, nome_type, TAM_TOKEN);
     ts->itens[iFunc].deslocamento = -4 - num_vars;
 }
 
@@ -194,14 +213,45 @@ simbolo_t buscaSimbolo (tabela_simbolos_t ts, char* nome) {
   return simbolo;
 }
 
-void validaTipos (pilha_int* pilha, int tipo) {
+void validaTipos (pilha_int* pilha, int tipo, simbolo_t type_atual, tabela_simbolos_t ts, pilha_str* simbolos) {
     int v1 = desempilha_int (pilha);
     int v2 = desempilha_int (pilha);
+    char *v1_nome_type;
+    simbolo_t v1_type;
 
-    if ((v1 != tipo) || (v1 != v2))
-        imprimeErro ("Operação invalida.");
 
-    return;
+    if (v1 == DEF) {
+        v1_nome_type = desempilha_str (simbolos);
+        v1_type = buscaSimbolo(ts, v1_nome_type);
+
+        if (v2 == DEF) {
+            if (strcmp(v1_nome_type, type_atual.nome) == 0) {
+                return;
+            }
+        }
+        
+        if (tipo == DEF) {
+            if (v1_type.tipo == v2 && v2 == type_atual.tipo)
+                return;
+        }
+
+        if (v1_type.tipo == v2 && v2 == tipo)
+            return;
+
+        imprimeErro ("Tipos diferentes.");
+    }
+
+    if (v2 == DEF) {  
+        if (type_atual.tipo == v1)
+            return;
+
+        imprimeErro ("Tipos diferentes.");
+    }
+
+    if (v1 == v2 && v1 == tipo)
+        return;
+
+    imprimeErro ("Tipos diferentes.");
 }
 
 void empilhaNUM(char *token, pilha_int *pilha) {
