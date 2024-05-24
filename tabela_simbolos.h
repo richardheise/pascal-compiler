@@ -42,6 +42,7 @@ typedef struct {
    char nome[TAM_TOKEN];
    char *nome_atributo[MAX_PARAM];
    int tipo_atributo[MAX_PARAM];
+   int valores[MAX_PARAM];   
    char *nome_type[TAM_TOKEN];
 } record_t;
 
